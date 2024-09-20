@@ -3,109 +3,97 @@ import secrets
 import time
 import threading
 
-
-# class TCPServer:
-#     def __init__(self, server_address, server_port):
-#         self.sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-#         self.server_address = server_address
-#         self.server_port = server_port
-#         print('Starting up on {}'.format(self.server_address))
-#         self.sock.bind((server_address, server_port))
+class TCPServer:
+    def __init__(self, server_address, server_port):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_address = server_address
+        self.server_port = server_port
+        print('Starting up on {}'.format(server_address))
+        self.sock.bind((server_address, server_port))
+        self.sock.listen()
     
-#     def main(self):
-#         self.sock.listen()
-#         while True:
-#             connection, client_address = self.sock.accept()
-#             try:
-#                 print('connection from', client_address)
-#                 byte_data = connection.recv(4096)
+    def handle_message(self):
+        while True:
+            connection, client_address = self.sock.accept()
+            try:
+                print('connection from', client_address)
+                byte_data = connection.recv(4096)
 
-#                 header = byte_data[:32]
-#                 room_name_size = int.from_bytes(header[:1], "big")
-#                 operation = int.from_bytes(header[1:2], "big")
-#                 state = int.from_bytes(header[2:3], "big")
-#                 operation_payload_size = int.from_bytes(header[3:32], "big")
+                header = byte_data[:32]
+                room_name_size = int.from_bytes(header[:1], "big")
+                operation = int.from_bytes(header[1:2], "big")
+                state = int.from_bytes(header[2:3], "big")
+                operation_payload_size = int.from_bytes(header[3:32], "big")
 
-#                 print('Received header from client.')
-#                 print(f'room_name_size: {room_name_size}')
-#                 print(f'operation: {operation}')
-#                 print(f'state: {state}')
-#                 print(f'operation_payload_size: {operation_payload_size}')
+                # print('Received header from client.')
+                # print(f'room_name_size: {room_name_size}')
+                # print(f'operation: {operation}')
+                # print(f'state: {state}')
+                # print(f'operation_payload_size: {operation_payload_size}')
 
-#                 body = byte_data[32:]
-#                 room_name = body[:room_name_size].decode("utf-8")
-#                 operation_payload = body[room_name_size : room_name_size + operation_payload_size].decode("utf-8")
+                body = byte_data[32:]
+                room_name = body[:room_name_size].decode("utf-8")
+                operation_payload = body[room_name_size : room_name_size + operation_payload_size].decode("utf-8")
 
-#                 print(f'room_name: {room_name}')
-#                 print(f'operation_payload: {operation_payload}')
+                # print(f'room_name: {room_name}')
+                # print(f'operation_payload: {operation_payload}')
 
-#                 token 
+                token = secrets.token_bytes(255)
 
-#                 if operation == 1:
-                    
+                if operation == 1:
+                    chat_room.create_room(room_name, operation_payload, token, client_address[0])
+                    connection.send(token)
+                
+                elif operation == 2:
+                    chat_room.join_room(room_name, operation_payload, token, client_address[0])
+                    connection.send(token)
 
-                    
+            except Exception as e:
+                print('Error: ' + str(e))
 
-#                 elif operation == 2:
-
-
-#             except Exception as e:
-#                 print('Error: ' + str(e))
-
-#             finally:
-#                 print("Closing current connection")
-#                 connection.close()
+            finally:
+                print("Closing current connection")
+                connection.close()
 
 
-import socket
-import time
+
+class ChatRoom:
+    def __init__(self):
+        self.chat_rooms = {}
+    
+    def create_room(self, room_name, operation_payload, token, client_address):
+        if room_name in self.chat_rooms:
+            raise ValueError(f'{room_name}は既に存在しています')
+        else:
+            self.chat_rooms[room_name] = {'host' : None,  'members' : None}
+            self.chat_rooms[room_name]['host'] = {token : (operation_payload, client_address)}
+            self.chat_rooms[room_name]['members'] = {token : (operation_payload, client_address)}
+        
+        print(self.chat_rooms)
+    
+    def join_room(self, room_name, operation_payload, token, client_address):
+        if room_name in self.chat_rooms:
+            self.chat_rooms[room_name]['members'][token] = (operation_payload, client_address)
+        else:
+            raise KeyError(f'{room_name}は見つかりませんでした')
+        
+        print(self.chat_rooms)
+
 
 # class UDPServer:
-#     def __init__(self):
 
-# AF_INETを使用し、UDPソケットを作成
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-server_address = '0.0.0.0'
-server_port = 9001
-print('starting up on port {}'.format(server_port))
 
-# ソケットを特殊なアドレス0.0.0.0とポート9001に紐付け
-sock.bind((server_address, server_port))
-
-clients = {}
-
-# クライアントの最後のメッセージ送信時刻を更新
-def update_client_last_message_sent_time(client_address):
-    clients[client_address] = time.time()
-
-# 5分間メッセージを送信していない場合、リレーシステムから削除
-def remove_inactive_clients():
-    while True:
-        current_time = time.time()
-        for client_address in clients.keys():
-            if current_time - clients[client_address] > 300:
-                del clients[client_address]
-                print(f"{client_address} has timed out")
-        time.sleep(60)
-
-# メッセージをリレー
-def relay_message(full_message, sender_address, username):
-    for client_address in clients.keys():
-        if client_address != sender_address:
-            sent = sock.sendto(full_message, client_address)
-            print('sent {} bytes back to {}'.format(sent, client_address))
-
-threading.Thread(target=remove_inactive_clients, daemon=True).start()
-
-while True:
-    print('\nwaiting to receive message')
-    full_message, client_address = sock.recvfrom(4096)
-    usernamelen = full_message[0]
-    username = full_message[1:usernamelen+1]
-    message = full_message[usernamelen+1:]
-    print('received {} bytes from {}'.format(len(message), username))
-    print(message)
-    update_client_last_message_sent_time(client_address)
-    if message:
-        relay_message(full_message, client_address, username)
+if __name__ == "__main__":
+    server_address = '0.0.0.0'
+    tcp_server_port = 9001
+    # udp_server_port = 9002
+    chat_room = ChatRoom()
+    tcp_server = TCPServer(server_address, tcp_server_port)
+    # udp_server = UDPServer(server_address, udp_server_port, chat_room)
+    thread_tcp_server = threading.Thread(target=tcp_server.handle_message)
+    # thread_udp_server = threading.Thread(target=udp_server.handle_message)
+    thread_tcp_server.start()
+    # thread_udp_server.start()
+    thread_tcp_server.join()
+    # thread_udp_server.join()
