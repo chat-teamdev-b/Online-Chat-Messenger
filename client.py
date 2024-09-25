@@ -1,6 +1,7 @@
 import socket
 import sys
 import threading
+import os
 
 class TCPClient:
     def __init__(self, server_address, server_port):
@@ -66,13 +67,15 @@ class TCPClient:
     def receive_message(self):
         self.sock.settimeout(10)
         try:
-            while True:
-                token = self.sock.recv(4096)
-                self.info["token"] = token
-                if token:
-                    print(self.info)
-                else:
-                    break
+            #while True:
+            token = self.sock.recv(4096)
+
+            self.info["token"] = token
+
+            if token:
+                print(self.info)
+            #else:
+            #    break
         except(TimeoutError):
             print('Socket timeout, ending listening for server messages')
         finally:
@@ -92,17 +95,58 @@ class TCPClient:
         return self.info
 
 
-# class UDPClient:
+class UDPClient:
+    def __init__(self, server_address,  udp_server_port, info):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.server_address = server_address
+        self.udp_server_port = udp_server_port
+        self.info = info
+    
+    def protocol_header(self, room_name_bytes_len, token_bytes_len):
+        return room_name_bytes_len.to_bytes(1, "big") + token_bytes_len.to_bytes(1, "big")
+
+    def send_message(self):
+        room_name_bytes = self.info["room_name"].encode('utf-8')
+        room_name_bytes_len = len(room_name_bytes)
+        token_bytes = self.info["token"]
+        token_bytes_len = len(token_bytes)
+        message_bytes = input().encode('utf-8')
+        header = self.protocol_header(room_name_bytes_len, token_bytes_len)
+        body = room_name_bytes + token_bytes + message_bytes
+        print("------------------------------------------------------")
+        data = header + body
+        print(data)
+        self.sock.sendto(header + body, (self.server_address, self.udp_server_port))
+
+    def receive_message(self):
+        while True:
+            data, _ = self.sock.recvfrom(4096)
+
+            if data.decode('utf-8') == "timeout":
+                print("タイムアウトしました")
+                self.sock.close()
+                os._exit(0)
+                break
+            
+            user_name_bytes_len = int.from_bytes(data[0], "big")
+            user_name = data[0:user_name_bytes_len].decode('utf-8')
+            message = data[user_name_bytes_len:].decode('utf-8')
+            print(f"[{user_name}] {message}")
+
+
+    def start(self):
+       self.send_message()
+       self.receive_message()
 
 
 
 if __name__ == "__main__":
     server_address = '0.0.0.0'
     tcp_server_port = 9001
-    # udp_server_port = 9002
+    udp_server_port = 9002
 
     tcp_client = TCPClient(server_address, tcp_server_port)
     info = tcp_client.start()
 
-    # udp_client = UDPClient(server_address, udp_server_port, info)
-    # udp_client.start()
+    udp_client = UDPClient(server_address, udp_server_port, info)
+    udp_client.start()

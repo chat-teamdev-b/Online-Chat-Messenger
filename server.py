@@ -2,6 +2,9 @@ import socket
 import secrets
 import time
 import threading
+import copy
+
+TIMEOUT = 300
 
 class TCPServer:
     def __init__(self, server_address, server_port):
@@ -41,11 +44,11 @@ class TCPServer:
                 token = secrets.token_bytes(255)
 
                 if operation == 1:
-                    chat_room.create_room(room_name, operation_payload, token, client_address[0])
+                    chat_rooms_obj.create_room(room_name, operation_payload, token, client_address[0])
                     connection.send(token)
                 
                 elif operation == 2:
-                    chat_room.join_room(room_name, operation_payload, token, client_address[0])
+                    chat_rooms_obj.join_room(room_name, operation_payload, token, client_address[0])
                     connection.send(token)
 
             except Exception as e:
@@ -56,6 +59,91 @@ class TCPServer:
                 connection.close()
 
 
+class UDPServer:
+    def __init__(self, server_address, server_port, chat_rooms_obj):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.server_address = server_address
+        self.server_port = server_port
+        self.chat_rooms_obj = chat_rooms_obj
+        self.TIMEOUT = 300
+        self.sock.bind((server_address, server_port))
+        self.count = 0
+        self.count_af = 0
+    
+    def handle_message(self):
+        while True:
+            # クライアントからのメッセージ受信
+            self.count += 1
+            print(f"count is {self.count}")
+            data, client_address = self.sock.recvfrom(4096)
+            self.count_af += 1
+            print(f"count_af is {self.count_af}")
+
+            header = data[:2]
+            room_name_size = int.from_bytes(header[:1], "big")
+            token_size = int.from_bytes(header[1:2], "big")
+
+            body = data[2:]
+            room_name = body[:room_name_size].decode("utf-8")
+            token = body[room_name_size : room_name_size + token_size]
+            message = body[room_name_size + token_size:].decode("utf-8")
+            
+            print("----------------------")
+            print(data)
+            print(room_name_size)
+            print(token_size)
+            print(room_name)
+            print(token)
+            print(message)
+            print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
+            print(self.chat_rooms_obj.chat_rooms)  # 全体の構造を確認
+            print(self.chat_rooms_obj.chat_rooms.get(room_name))  # room_nameが存在するか確認
+            print(self.chat_rooms_obj.chat_rooms[room_name].get('members'))  # 'members'キーが存在するか確認
+            print(self.chat_rooms_obj.chat_rooms[room_name]['members'].get(token))  # tokenが存在するか確認
+            print(self.chat_rooms_obj.chat_rooms[room_name]['members'][token][0])
+            print(self.chat_rooms_obj.chat_rooms[room_name]['members'][token][0][0])
+            print("bbbbbbbbbbbbbbbbbbbbbbbbbbb")
+
+            user_name = self.chat_rooms_obj.chat_rooms[room_name]['members'][token][0][0]
+            user_name_bytes = user_name.encode("utf-8")
+            user_name_bytes_len = len(user_name_bytes)
+            print(f"[{user_name}] {message}")
+
+            # クライアントからの最新メッセージ受信時間を更新
+            self.chat_rooms_obj.chat_rooms[room_name]['members'][token][1] = time.time()
+
+            # 各クライアントへメッセージ送信
+            message_bytes = message.encode("utf-8")
+            data = user_name_bytes_len.to_bytes(1, "big") + user_name_bytes + message_bytes
+
+            for client_token in self.chat_rooms_obj.chat_rooms[room_name]['members'].keys():
+                destination_client_address = self.chat_rooms_obj.chat_rooms[room_name]['members'][client_token][0][1]
+                try:
+                    self.sock.sendto(data, (destination_client_address, self.server_port))
+                except Exception as e:
+                    print(f"クライアントへメッセージを送信できませんでした: {e}")
+            
+
+    
+    def remove_inactive_clients(self):
+        while True:
+            current_time = time.time()
+            copy_chat_rooms = copy.deepcopy(self.chat_rooms_obj.chat_rooms)
+            for chat_room in copy_chat_rooms.keys():
+                for client_token in copy_chat_rooms[chat_room]['members'].keys():
+                    if current_time - copy_chat_rooms[chat_room]['members'][client_token][1] > TIMEOUT:
+                        print(f"クライアント {copy_chat_rooms[chat_room]['members'][client_token][0][1]} がタイムアウトしました。")
+                        message = "timeout".encode("utf-8")
+                        # 削除されたクライアントがホストの場合はチャットルームも閉じる
+                        if client_token in copy_chat_rooms[chat_room]['host']:
+                            for client_token_sub in copy_chat_rooms[chat_room]['members'].keys():
+                                self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
+                            del self.chat_rooms[chat_room]
+                        else:
+                            self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
+                            del self.chat_rooms_obj[chat_room]['members'][client_token]
+
+            time.sleep(1)
 
 class ChatRoom:
     def __init__(self):
@@ -67,33 +155,32 @@ class ChatRoom:
         else:
             self.chat_rooms[room_name] = {'host' : None,  'members' : None}
             self.chat_rooms[room_name]['host'] = {token : (operation_payload, client_address)}
-            self.chat_rooms[room_name]['members'] = {token : (operation_payload, client_address)}
+            self.chat_rooms[room_name]['members'] = {token : [(operation_payload, client_address), time.time()]}
         
         print(self.chat_rooms)
     
     def join_room(self, room_name, operation_payload, token, client_address):
         if room_name in self.chat_rooms:
-            self.chat_rooms[room_name]['members'][token] = (operation_payload, client_address)
+            self.chat_rooms[room_name]['members'][token] = [(operation_payload, client_address), time.time()]
         else:
             raise KeyError(f'{room_name}は見つかりませんでした')
         
         print(self.chat_rooms)
 
 
-# class UDPServer:
-
-
 
 if __name__ == "__main__":
     server_address = '0.0.0.0'
     tcp_server_port = 9001
-    # udp_server_port = 9002
-    chat_room = ChatRoom()
+    udp_server_port = 9002
+    chat_rooms_obj = ChatRoom()
     tcp_server = TCPServer(server_address, tcp_server_port)
-    # udp_server = UDPServer(server_address, udp_server_port, chat_room)
-    thread_tcp_server = threading.Thread(target=tcp_server.handle_message)
-    # thread_udp_server = threading.Thread(target=udp_server.handle_message)
+    udp_server = UDPServer(server_address, udp_server_port, chat_rooms_obj)
+   
+    thread_tcp_server = threading.Thread(target=tcp_server.handle_message)    
+    thread_udp_server = threading.Thread(target=udp_server.handle_message)
     thread_tcp_server.start()
-    # thread_udp_server.start()
+    threading.Thread(target=udp_server.remove_inactive_clients, daemon=True).start() 
+    thread_udp_server.start()
     thread_tcp_server.join()
-    # thread_udp_server.join()
+    thread_udp_server.join()
