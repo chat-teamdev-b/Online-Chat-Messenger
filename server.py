@@ -27,41 +27,60 @@ class TCPServer:
             connection, client_address = self.sock.accept()
             try:
                 print('connection from', client_address)
-                byte_data = connection.recv(4096)
-
-                header = byte_data[:32]
+                header = connection.recv(32)
                 room_name_size = int.from_bytes(header[:1], "big")
                 operation = int.from_bytes(header[1:2], "big")
                 state = int.from_bytes(header[2:3], "big")
                 operation_payload_size = int.from_bytes(header[3:32], "big")
 
-                # print('Received header from client.')
-                # print(f'room_name_size: {room_name_size}')
-                # print(f'operation: {operation}')
-                # print(f'state: {state}')
-                # print(f'operation_payload_size: {operation_payload_size}')
-
-                body = byte_data[32:]
+                body = connection.recv(room_name_size + operation_payload_size)
                 room_name = body[:room_name_size].decode("utf-8")
-                operation_payload = body[room_name_size : room_name_size + operation_payload_size].decode("utf-8")
+                operation_payload = body[room_name_size:].decode("utf-8")
 
-                token = secrets.token_bytes(3)
-                token_len_bytes = len(token).to_bytes(1, "big")
-                ip_bytes = socket.inet_aton(client_address[0])
-                ip_bytes_len = len(ip_bytes).to_bytes(1, "big")
-                port_bytes = struct.pack('!H', client_address[1])
-                data = token_len_bytes + ip_bytes_len + token + ip_bytes + port_bytes
 
-                if operation == 1:
-                    chat_rooms_obj.create_room(room_name, operation_payload, token, client_address)
-                    connection.send(data)
+#                 token = secrets.token_bytes(3)
+#                 token_len_bytes = len(token).to_bytes(1, "big")
+#                 ip_bytes = socket.inet_aton(client_address[0])
+#                 ip_bytes_len = len(ip_bytes).to_bytes(1, "big")
+#                 port_bytes = struct.pack('!H', client_address[1])
+#                 data = token_len_bytes + ip_bytes_len + token + ip_bytes + port_bytes
+
+#                 if operation == 1:
+#                     chat_rooms_obj.create_room(room_name, operation_payload, token, client_address)
+#                     connection.send(data)
                 
-                elif operation == 2:
-                    chat_rooms_obj.join_room(room_name, operation_payload, token, client_address)
-                    connection.send(data)
+#                 elif operation == 2:
+#                     chat_rooms_obj.join_room(room_name, operation_payload, token, client_address)
+#                     connection.send(data)
+
+                print(f"Received: RoomName={room_name}, Operation={operation}, State={state}, Payload={operation_payload}")
+
+                token = secrets.token_bytes(255)
+
+                if state == 0x01: # リクエスト
+                    if operation == 1:
+                        chat_room.create_room(room_name, operation_payload, token, client_address[0])
+                    elif operation == 2:
+                        chat_room.join_room(room_name, operation_payload, token, client_address[0])
+                    response_state = bytes([0x00]) # 成功
+                    connection.send(response_state)
+                    connection.send(token)
+            
+            except ValueError as ve:
+                print('Error: ' + str(ve))
+                response_state = bytes([0x03]) # ルームは既に存在します。
+                connection.send(response_state)
+            
+            except KeyError as ke:
+                print('Error: ' + str(ke))
+                response_state = bytes([0x04]) # ルームが見つかりません。
+                connection.send(response_state)
+
 
             except Exception as e:
                 print('Error: ' + str(e))
+                response_state = bytes([0x04]) # エラー
+                connection.send(response_state)
 
             finally:
                 print("Closing current connection")
@@ -139,7 +158,7 @@ class ChatRoom:
     
     def create_room(self, room_name, operation_payload, token, client_address):
         if room_name in self.chat_rooms:
-            raise ValueError(f'{room_name}は既に存在しています')
+            raise ValueError(f'ルーム{room_name}は既に存在しています')
         else:
             self.chat_rooms[room_name] = {'host' : None,  'members' : None}
             self.chat_rooms[room_name]['host'] = {token : (operation_payload, client_address)}
@@ -151,7 +170,7 @@ class ChatRoom:
         if room_name in self.chat_rooms:
             self.chat_rooms[room_name]['members'][token] = [(operation_payload, client_address), time.time()]
         else:
-            raise KeyError(f'{room_name}は見つかりませんでした')
+            raise KeyError(f'ルーム{room_name}は見つかりませんでした')
         
         print(self.chat_rooms)
 
@@ -172,3 +191,5 @@ if __name__ == "__main__":
     thread_udp_server.start()
     thread_tcp_server.join()
     thread_udp_server.join()
+
+
