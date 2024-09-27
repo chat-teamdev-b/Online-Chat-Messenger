@@ -4,6 +4,7 @@ import time
 import threading
 import copy
 import struct
+import os
 
 TIMEOUT = 300
 
@@ -13,6 +14,11 @@ class TCPServer:
         self.server_address = server_address
         self.server_port = server_port
         print('Starting up on {}'.format(server_address))
+        try:
+            os.unlink(server_address)
+        # サーバアドレスが存在しない場合、例外を無視します
+        except FileNotFoundError:
+            pass
         self.sock.bind((server_address, server_port))
         self.sock.listen()
     
