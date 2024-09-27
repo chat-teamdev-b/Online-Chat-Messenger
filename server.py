@@ -3,6 +3,7 @@ import secrets
 import time
 import threading
 import copy
+import struct
 
 TIMEOUT = 300
 
@@ -38,18 +39,20 @@ class TCPServer:
                 room_name = body[:room_name_size].decode("utf-8")
                 operation_payload = body[room_name_size : room_name_size + operation_payload_size].decode("utf-8")
 
-                # print(f'room_name: {room_name}')
-                # print(f'operation_payload: {operation_payload}')
-
-                token = secrets.token_bytes(255)
+                token = secrets.token_bytes(3)
+                token_len_bytes = len(token).to_bytes(1, "big")
+                ip_bytes = socket.inet_aton(client_address[0])
+                ip_bytes_len = len(ip_bytes).to_bytes(1, "big")
+                port_bytes = struct.pack('!H', client_address[1])
+                data = token_len_bytes + ip_bytes_len + token + ip_bytes + port_bytes
 
                 if operation == 1:
-                    chat_rooms_obj.create_room(room_name, operation_payload, token, client_address[0])
-                    connection.send(token)
+                    chat_rooms_obj.create_room(room_name, operation_payload, token, client_address)
+                    connection.send(data)
                 
                 elif operation == 2:
-                    chat_rooms_obj.join_room(room_name, operation_payload, token, client_address[0])
-                    connection.send(token)
+                    chat_rooms_obj.join_room(room_name, operation_payload, token, client_address)
+                    connection.send(data)
 
             except Exception as e:
                 print('Error: ' + str(e))
@@ -67,17 +70,11 @@ class UDPServer:
         self.chat_rooms_obj = chat_rooms_obj
         self.TIMEOUT = 300
         self.sock.bind((server_address, server_port))
-        self.count = 0
-        self.count_af = 0
     
     def handle_message(self):
         while True:
             # クライアントからのメッセージ受信
-            self.count += 1
-            print(f"count is {self.count}")
             data, client_address = self.sock.recvfrom(4096)
-            self.count_af += 1
-            print(f"count_af is {self.count_af}")
 
             header = data[:2]
             room_name_size = int.from_bytes(header[:1], "big")
@@ -87,22 +84,6 @@ class UDPServer:
             room_name = body[:room_name_size].decode("utf-8")
             token = body[room_name_size : room_name_size + token_size]
             message = body[room_name_size + token_size:].decode("utf-8")
-            
-            print("----------------------")
-            print(data)
-            print(room_name_size)
-            print(token_size)
-            print(room_name)
-            print(token)
-            print(message)
-            print("aaaaaaaaaaaaaaaaaaaaaaaaaaaaa")
-            print(self.chat_rooms_obj.chat_rooms)  # 全体の構造を確認
-            print(self.chat_rooms_obj.chat_rooms.get(room_name))  # room_nameが存在するか確認
-            print(self.chat_rooms_obj.chat_rooms[room_name].get('members'))  # 'members'キーが存在するか確認
-            print(self.chat_rooms_obj.chat_rooms[room_name]['members'].get(token))  # tokenが存在するか確認
-            print(self.chat_rooms_obj.chat_rooms[room_name]['members'][token][0])
-            print(self.chat_rooms_obj.chat_rooms[room_name]['members'][token][0][0])
-            print("bbbbbbbbbbbbbbbbbbbbbbbbbbb")
 
             user_name = self.chat_rooms_obj.chat_rooms[room_name]['members'][token][0][0]
             user_name_bytes = user_name.encode("utf-8")
@@ -117,11 +98,12 @@ class UDPServer:
             data = user_name_bytes_len.to_bytes(1, "big") + user_name_bytes + message_bytes
 
             for client_token in self.chat_rooms_obj.chat_rooms[room_name]['members'].keys():
-                destination_client_address = self.chat_rooms_obj.chat_rooms[room_name]['members'][client_token][0][1]
-                try:
-                    self.sock.sendto(data, (destination_client_address, self.server_port))
-                except Exception as e:
-                    print(f"クライアントへメッセージを送信できませんでした: {e}")
+                if client_token != token:
+                    destination_client_address = self.chat_rooms_obj.chat_rooms[room_name]['members'][client_token][0][1]
+                    try:
+                        self.sock.sendto(data, destination_client_address)
+                    except Exception as e:
+                        print(f"クライアントへメッセージを送信できませんでした: {e}")
             
 
     
@@ -137,10 +119,10 @@ class UDPServer:
                         # 削除されたクライアントがホストの場合はチャットルームも閉じる
                         if client_token in copy_chat_rooms[chat_room]['host']:
                             for client_token_sub in copy_chat_rooms[chat_room]['members'].keys():
-                                self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
+                                self.sock.sendto(message, (copy_chat_rooms[chat_room]['members'][client_token_sub][0][1], self.client_port))
                             del self.chat_rooms[chat_room]
                         else:
-                            self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
+                            self.sock.sendto(message, (copy_chat_rooms[chat_room]['members'][client_token_sub][0][1], self.client_port))
                             del self.chat_rooms_obj[chat_room]['members'][client_token]
 
             time.sleep(1)
