@@ -70,7 +70,7 @@ class TCPClient:
         operation = self.input_operation()
         room_name_bytes = self.input_room_name(operation)
         room_name_bytes_size = len(room_name_bytes)
-        state = 1 # リクエスト
+        state = 0x01 # リクエスト
         header = self.protocol_header(room_name_bytes_size, operation, state, user_name_bytes_size)
         body = room_name_bytes + user_name_bytes
         self.sock.send(header+body)
