@@ -192,7 +192,6 @@ if __name__ == "__main__":
     server_address = '0.0.0.0'
     tcp_server_port = 9001
     udp_server_port = 9002
-    udp_server_port = 9002
 
     tcp_client = TCPClient(server_address, tcp_server_port)
     info = tcp_client.start()
@@ -200,6 +199,3 @@ if __name__ == "__main__":
     if "token" in info.keys():
         udp_client = UDPClient(server_address, udp_server_port, info)
         udp_client.start()
-    
-
-
