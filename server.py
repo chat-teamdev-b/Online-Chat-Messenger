@@ -6,7 +6,6 @@ import copy
 import struct
 import os
 
-TIMEOUT = 300
 
 class TCPServer:
     def __init__(self, server_address, server_port):
@@ -14,9 +13,10 @@ class TCPServer:
         self.server_address = server_address
         self.server_port = server_port
         print('Starting up on {}'.format(server_address))
+
+        # 前の接続が残っていた場合接続解除
         try:
             os.unlink(server_address)
-        # サーバアドレスが存在しない場合、例外を無視します
         except FileNotFoundError:
             pass
         self.sock.bind((server_address, server_port))
@@ -32,39 +32,29 @@ class TCPServer:
                 operation = int.from_bytes(header[1:2], "big")
                 state = int.from_bytes(header[2:3], "big")
                 operation_payload_size = int.from_bytes(header[3:32], "big")
+                print(f"state: {state}")
 
                 body = connection.recv(room_name_size + operation_payload_size)
                 room_name = body[:room_name_size].decode("utf-8")
                 operation_payload = body[room_name_size:].decode("utf-8")
 
 
-#                 token = secrets.token_bytes(3)
-#                 token_len_bytes = len(token).to_bytes(1, "big")
-#                 ip_bytes = socket.inet_aton(client_address[0])
-#                 ip_bytes_len = len(ip_bytes).to_bytes(1, "big")
-#                 port_bytes = struct.pack('!H', client_address[1])
-#                 data = token_len_bytes + ip_bytes_len + token + ip_bytes + port_bytes
-
-#                 if operation == 1:
-#                     chat_rooms_obj.create_room(room_name, operation_payload, token, client_address)
-#                     connection.send(data)
-                
-#                 elif operation == 2:
-#                     chat_rooms_obj.join_room(room_name, operation_payload, token, client_address)
-#                     connection.send(data)
-
-                print(f"Received: RoomName={room_name}, Operation={operation}, State={state}, Payload={operation_payload}")
-
-                token = secrets.token_bytes(255)
-
-                if state == 0x01: # リクエスト
+                token = secrets.token_bytes(3)
+                token_len_bytes = len(token).to_bytes(1, "big")
+                ip_bytes = socket.inet_aton(client_address[0])
+                ip_bytes_len = len(ip_bytes).to_bytes(1, "big")
+                port_bytes = struct.pack('!H', client_address[1])
+                data = token_len_bytes + ip_bytes_len + token + ip_bytes + port_bytes
+                if state == 1: # リクエスト
                     if operation == 1:
-                        chat_room.create_room(room_name, operation_payload, token, client_address[0])
+                        chat_rooms_obj.create_room(room_name, operation_payload, token, client_address)
+                    
                     elif operation == 2:
-                        chat_room.join_room(room_name, operation_payload, token, client_address[0])
+                        chat_rooms_obj.join_room(room_name, operation_payload, token, client_address)
+                    
                     response_state = bytes([0x00]) # 成功
                     connection.send(response_state)
-                    connection.send(token)
+                    connection.send(data)
             
             except ValueError as ve:
                 print('Error: ' + str(ve))
@@ -79,7 +69,7 @@ class TCPServer:
 
             except Exception as e:
                 print('Error: ' + str(e))
-                response_state = bytes([0x04]) # エラー
+                response_state = bytes([0x05]) # エラー
                 connection.send(response_state)
 
             finally:
@@ -93,9 +83,10 @@ class UDPServer:
         self.server_address = server_address
         self.server_port = server_port
         self.chat_rooms_obj = chat_rooms_obj
-        self.TIMEOUT = 300
+        self.TIMEOUT = 30
         self.sock.bind((server_address, server_port))
     
+    # クライアントからのメッセージを受信し、同じルーム内の全てのクライアントへ転送
     def handle_message(self):
         while True:
             # クライアントからのメッセージ受信
@@ -131,24 +122,31 @@ class UDPServer:
                         print(f"クライアントへメッセージを送信できませんでした: {e}")
             
 
-    
+    # 非アクティブなクライアントの退出処理
     def remove_inactive_clients(self):
         while True:
             current_time = time.time()
             copy_chat_rooms = copy.deepcopy(self.chat_rooms_obj.chat_rooms)
             for chat_room in copy_chat_rooms.keys():
                 for client_token in copy_chat_rooms[chat_room]['members'].keys():
-                    if current_time - copy_chat_rooms[chat_room]['members'][client_token][1] > TIMEOUT:
+
+                    # クライアントからのメッセージ送信が一定時間されない場合、そのクライアントを退出させる
+                    if current_time - copy_chat_rooms[chat_room]['members'][client_token][1] > self.TIMEOUT:
                         print(f"クライアント {copy_chat_rooms[chat_room]['members'][client_token][0][1]} がタイムアウトしました。")
                         message = "timeout".encode("utf-8")
-                        # 削除されたクライアントがホストの場合はチャットルームも閉じる
+
+                        # 削除されたクライアントがホストの場合はチャットルームごと閉じる
                         if client_token in copy_chat_rooms[chat_room]['host']:
                             for client_token_sub in copy_chat_rooms[chat_room]['members'].keys():
-                                self.sock.sendto(message, (copy_chat_rooms[chat_room]['members'][client_token_sub][0][1], self.client_port))
-                            del self.chat_rooms[chat_room]
+                                if client_token_sub != client_token:
+                                    message = "nohost".encode("utf-8")
+                                self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
+                            del self.chat_rooms_obj.chat_rooms[chat_room]
+
+                        # それ以外の場合は対象のクライアントのみ退出させる
                         else:
-                            self.sock.sendto(message, (copy_chat_rooms[chat_room]['members'][client_token_sub][0][1], self.client_port))
-                            del self.chat_rooms_obj[chat_room]['members'][client_token]
+                            self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token][0][1])
+                            del self.chat_rooms_obj.chat_rooms[chat_room]['members'][client_token]
 
             time.sleep(1)
 
@@ -156,6 +154,7 @@ class ChatRoom:
     def __init__(self):
         self.chat_rooms = {}
     
+    # チャットルーム作成
     def create_room(self, room_name, operation_payload, token, client_address):
         if room_name in self.chat_rooms:
             raise ValueError(f'ルーム{room_name}は既に存在しています')
@@ -166,6 +165,7 @@ class ChatRoom:
         
         print(self.chat_rooms)
     
+    # チャットルーム参加
     def join_room(self, room_name, operation_payload, token, client_address):
         if room_name in self.chat_rooms:
             self.chat_rooms[room_name]['members'][token] = [(operation_payload, client_address), time.time()]
