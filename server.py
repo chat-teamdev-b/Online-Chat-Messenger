@@ -45,7 +45,7 @@ class TCPServer:
                 ip_bytes_len = len(ip_bytes).to_bytes(1, "big")
                 port_bytes = struct.pack('!H', client_address[1])
                 data = token_len_bytes + ip_bytes_len + token + ip_bytes + port_bytes
-                if state == 1: # リクエスト
+                if state == 0x01: # リクエスト
                     if operation == 1:
                         chat_rooms_obj.create_room(room_name, operation_payload, token, client_address)
                     
@@ -58,12 +58,12 @@ class TCPServer:
             
             except ValueError as ve:
                 print('Error: ' + str(ve))
-                response_state = bytes([3]) # ルームは既に存在します。
+                response_state = bytes([0x03]) # ルームは既に存在します。
                 connection.send(response_state)
             
             except KeyError as ke:
                 print('Error: ' + str(ke))
-                response_state = bytes([4]) # ルームが見つかりません。
+                response_state = bytes([0x04]) # ルームが見つかりません。
                 connection.send(response_state)
 
 
