@@ -58,12 +58,12 @@ class TCPServer:
             
             except ValueError as ve:
                 print('Error: ' + str(ve))
-                response_state = bytes([0x03]) # ルームは既に存在します。
+                response_state = bytes([3]) # ルームは既に存在します。
                 connection.send(response_state)
             
             except KeyError as ke:
                 print('Error: ' + str(ke))
-                response_state = bytes([0x04]) # ルームが見つかりません。
+                response_state = bytes([4]) # ルームが見つかりません。
                 connection.send(response_state)
 
 
@@ -183,7 +183,6 @@ if __name__ == "__main__":
     chat_rooms_obj = ChatRoom()
     tcp_server = TCPServer(server_address, tcp_server_port)
     udp_server = UDPServer(server_address, udp_server_port, chat_rooms_obj)
-   
     thread_tcp_server = threading.Thread(target=tcp_server.handle_message)    
     thread_udp_server = threading.Thread(target=udp_server.handle_message)
     thread_tcp_server.start()
