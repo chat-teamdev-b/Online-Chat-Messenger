@@ -45,7 +45,7 @@ class TCPServer:
                 ip_bytes_len = len(ip_bytes).to_bytes(1, "big")
                 port_bytes = struct.pack('!H', client_address[1])
                 data = token_len_bytes + ip_bytes_len + token + ip_bytes + port_bytes
-                if state == 1: # リクエスト
+                if state == 0x01: # リクエスト
                     if operation == 1:
                         chat_rooms_obj.create_room(room_name, operation_payload, token, client_address)
                     
@@ -183,7 +183,6 @@ if __name__ == "__main__":
     chat_rooms_obj = ChatRoom()
     tcp_server = TCPServer(server_address, tcp_server_port)
     udp_server = UDPServer(server_address, udp_server_port, chat_rooms_obj)
-   
     thread_tcp_server = threading.Thread(target=tcp_server.handle_message)    
     thread_udp_server = threading.Thread(target=udp_server.handle_message)
     thread_tcp_server.start()
