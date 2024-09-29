@@ -137,12 +137,12 @@ class UDPClient:
     # メッセージ送信
     def send_message(self):
         while True:
-            message = input(f'[{self.info['user_name']}] ')
+            message = input(f"[{self.info['user_name']}] ")
             while message == "":
                 print("\033[1A", end="") 
-                message = input(f'[{self.info['user_name']}] ')
+                message = input(f"[{self.info['user_name']}] ")
             print("\033[1A", end="") 
-            print(f'[{self.info['user_name']}] {message}')
+            print(f"[{self.info['user_name']}] {message}")
             message_bytes = message.encode('utf-8')
             room_name_bytes = self.info["room_name"].encode('utf-8')
             room_name_bytes_len = len(room_name_bytes)
