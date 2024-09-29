@@ -78,37 +78,34 @@ class TCPClient:
     def receive_message(self):
         self.sock.settimeout(10)
         try:
-
-#             data = self.sock.recv(4096)
-#             token_size = int.from_bytes(data[0:1], "big")
-#             ip_size = int.from_bytes(data[1:2], "big")
-#             token = data[2 : 2 + token_size]
-#             decoded_ip = socket.inet_ntoa(data[2 + token_size : 2 + token_size + ip_size])
-#             decoded_port = struct.unpack('!H', data[2 + token_size + ip_size :])[0]
-#             client_address = (decoded_ip, decoded_port)
-#             self.info["address_port"] = client_address
-
-#             self.info["token"] = token
-
-#             if token:
-#                 print(self.info)
-
-#         except(TimeoutError):
- 
             response_state = self.sock.recv(1)[0]
             if response_state == 0x00:
-                token = self.sock.recv(255)
+                data = self.sock.recv(4096)
+                token_size = int.from_bytes(data[0:1], "big")
+                ip_size = int.from_bytes(data[1:2], "big")
+                token = data[2 : 2 + token_size]
+                decoded_ip = socket.inet_ntoa(data[2 + token_size : 2 + token_size + ip_size])
+                decoded_port = struct.unpack('!H', data[2 + token_size + ip_size :])[0]
+                client_address = (decoded_ip, decoded_port)
+                self.info["address_port"] = client_address
+
                 self.info["token"] = token
-                print(self.info)
+
+                if token:
+                    print(self.info)
+            
             elif response_state == 0x03:
-                print(f"ルーム{self.info["room_name"]}は既に存在します。")
+                print(f"ルーム{self.info['room_name']}は既に存在します。")
+            
             elif response_state == 0x04:
-                print(f"ルーム{self.info["room_name"]}が見つかりません。")
+                print(f"ルーム{self.info['room_name']}が見つかりません。")
+            
             else:
                 print("エラーが発生しました.。")
+
         except TimeoutError:
-          
             print('Socket timeout, ending listening for server messages')
+        
         finally:
             print('closing socket')
             self.sock.close()
@@ -136,7 +133,8 @@ class UDPClient:
     
     def protocol_header(self, room_name_bytes_len, token_bytes_len):
         return room_name_bytes_len.to_bytes(1, "big") + token_bytes_len.to_bytes(1, "big")
-
+    
+    # メッセージ送信
     def send_message(self):
         while True:
             room_name_bytes = self.info["room_name"].encode('utf-8')
@@ -144,17 +142,23 @@ class UDPClient:
             token_bytes = self.info["token"]
             token_bytes_len = len(token_bytes)
             message_bytes = input(f"[{self.info['user_name']}] ").encode('utf-8')
-            #print(end="\r")
             header = self.protocol_header(room_name_bytes_len, token_bytes_len)
             body = room_name_bytes + token_bytes + message_bytes
             self.sock.sendto(header + body, (self.server_address, self.udp_server_port))
-
+    
+    # メッセージ受信
     def receive_message(self):
         while True:
             data, _ = self.sock.recvfrom(4096)
 
+            # タイムアウト処理
             if data.decode('utf-8') == "timeout":
                 print("タイムアウトしました")
+                self.sock.close()
+                os._exit(0)
+                break
+            elif data.decode('utf-8') == "nohost":
+                print("ホストが退出しました")
                 self.sock.close()
                 os._exit(0)
                 break
@@ -185,11 +189,9 @@ if __name__ == "__main__":
     tcp_client = TCPClient(server_address, tcp_server_port)
     info = tcp_client.start()
 
-    # if "token" in info.keys():
-    udp_client = UDPClient(server_address, udp_server_port, info)
-    udp_client.start()
+    if "token" in info.keys():
+        udp_client = UDPClient(server_address, udp_server_port, info)
+        udp_client.start()
+    
 
-    # if "token" in info.keys():
-        # udp_client = UDPClient(server_address, udp_server_port, info)
-        # udp_client.start()
 
