@@ -1,0 +1,26 @@
+{
+  "name": "online-chat-messenger",
+  "version": "1.0.0",
+  "description": "このリポジトリには、TCPおよびUDPプロトコルを使用してチャットルームを実装するためのサーバーおよびクライアントプログラムが含まれています。   サーバーは複数のクライアントからの接続を処理し、クライアント間でメッセージを中継します。 # ファイル構成",
+  "main": "src/main.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/chat-teamdev-b/Online-Chat-Messenger.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/chat-teamdev-b/Online-Chat-Messenger/issues"
+  },
+  "homepage": "https://github.com/chat-teamdev-b/Online-Chat-Messenger#readme",
+  "devDependencies": {
+    "electron": "^32.1.2"
+  },
+  "dependencies": {
+    "python-shell": "^5.0.0"
+  }
+}

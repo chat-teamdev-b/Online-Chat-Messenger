@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Electron App</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self';">
+    
+</head>
+<body>
+    <h1>Electron</h1>
+    ユーザー名を入力してください<input type="text" id="user_name" ><br>
+    ルーム名を入力してください<input type="text" id="room_name"><br>
+    <input type="radio" name="operation" value="1">ルームを作成する
+    <input type="radio" name="operation" value="2">ルームに参加する<br>
+    <button id="run-python">Pythonスクリプトを実行</button><br>
+    <pre id="output"></pre>
+    <script src="renderer.js"></script>
+</body>
+</html>

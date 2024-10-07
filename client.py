@@ -3,7 +3,11 @@ import sys
 import threading
 import os
 import struct
-import json
+
+if len(sys.argv) < 4:
+    print("Usage: python client.py <user_name> <room_name> <operation>")
+    sys.exit(1)
+
 
 class TCPClient:
     def __init__(self, server_address, server_port):
@@ -12,14 +16,12 @@ class TCPClient:
         self.server_port = server_port
         self.info = {}
     
-    # ヘッダー作成
-    def protocol_header(self, room_name_bytes_size, operation, state, json_string_payload_bytes_size):
-        return room_name_bytes_size.to_bytes(1, "big") + operation.to_bytes(1, "big") + state.to_bytes(1,"big") + json_string_payload_bytes_size.to_bytes(29, "big")
+    def protocol_header(self, room_name_bytes_size, operation, state, user_name_bytes_size):
+        return room_name_bytes_size.to_bytes(1, "big") + operation.to_bytes(1, "big") + state.to_bytes(1,"big") + user_name_bytes_size.to_bytes(29, "big")
 
-    # ユーザー名入力
     def input_user_name(self):
         try:
-            user_name = input("ユーザー名を入力してください: ")
+            user_name = sys.argv[1]
             self.info["user_name"] =  user_name
             user_name_bytes = user_name.encode('utf-8')
             if len(user_name_bytes) > 2**29:
@@ -28,15 +30,14 @@ class TCPClient:
             elif len(user_name_bytes) == 0:
                 return self.input_user_name()
             else:
-                return user_name
+                return user_name_bytes
         except Exception as e:
             print(f"エラーが発生しました: {e}")
             return self.input_user_name()
 
-    # オペレーション入力    
     def input_operation(self):
         try:
-            operation = int(input("1または2を入力してください (1 : チャットルームを作成, 2 : チャットルームに参加): "))
+            operation = sys.argv[3]
             if operation != 1 and operation != 2:
                 return self.input_operation()
             return operation
@@ -46,12 +47,11 @@ class TCPClient:
             print(f"エラーが発生しました: {e}")
             return self.input_operation()
     
-    # ルーム名入力
     def input_room_name(self, operation):
         if operation == 1:
-            room_name = input("作成したいルーム名を入力してください: ")
+            room_name = sys.argv[2]
         elif operation == 2:
-            room_name = input("参加したいルーム名を入力してください: ")
+            room_name = sys.argv[2]
         
         self.info["room_name"] = room_name
         room_name_bytes = room_name.encode('utf-8')
@@ -63,61 +63,27 @@ class TCPClient:
             return self.input_room_name(operation)
         
         return room_name_bytes
-    
-    def input_password(self, operation):
-        if operation == 1:
-            try:
-                option = input("パスワードを設定しますか(y/n): ").strip().lower()
-                if option != "y" and option != "n":
-                    return self.input_password()
-                
-                if option == "y":
-                    while True:
-                        password = input("パスワードを入力してください: ").strip()
-                        if password:
-                            return password
-                        else:
-                            print("パスワードは空にできません。もう一度入力してください。")
-                else:
-                    return None
-                
-            except Exception as e:
-                print(f"エラーが発生しました: {e}")
-                return self.input_password(operation)
-        elif operation == 2:
-            password = input("パスワードを入力してください(設定されていない場合は空白のままEnterを押してください): ").strip() or None
-            return password
 
-    
-
-    # リクエスト送信    
     def send_message(self):
-        user_name = self.input_user_name()
+        user_name_bytes = self.input_user_name()
+        user_name_bytes_size = len(user_name_bytes)
         operation = self.input_operation()
         room_name_bytes = self.input_room_name(operation)
         room_name_bytes_size = len(room_name_bytes)
-
-        password = self.input_password(operation)
-        json_payload = {
-            "user_name": user_name,
-            "password": password
-        }
-        json_string_payload_bytes = json.dumps(json_payload).encode('utf-8')
-        json_string_payload_bytes_size = len(json_string_payload_bytes)
-
-
-
-        state = 0x01 # リクエスト
-        header = self.protocol_header(room_name_bytes_size, operation, state, json_string_payload_bytes_size)
-        body = room_name_bytes + json_string_payload_bytes
+        state = 0x01
+        header = self.protocol_header(room_name_bytes_size, operation, state, user_name_bytes_size)
+        body = room_name_bytes + user_name_bytes
+        print(f"Sending message: {header + body}")  # デバッグ用ログ出力
         self.sock.send(header+body)
     
     def receive_message(self):
         self.sock.settimeout(10)
         try:
             response_state = self.sock.recv(1)[0]
+            print(f"Response state: {response_state}")  # デバッグ用ログ出力
             if response_state == 0x00:
                 data = self.sock.recv(4096)
+                print(f"Received data: {data}")  # デバッグ用ログ出力
                 token_size = int.from_bytes(data[0:1], "big")
                 ip_size = int.from_bytes(data[1:2], "big")
                 token = data[2 : 2 + token_size]
@@ -135,13 +101,10 @@ class TCPClient:
                 print(f"ルーム{self.info['room_name']}は既に存在します。")
             
             elif response_state == 0x04:
-                print("パスワードが間違っています。")
-            
-            elif response_state == 0x05:
                 print(f"ルーム{self.info['room_name']}が見つかりません。")
             
             else:
-                print("エラーが発生しました")
+                print("エラーが発生しました。")
 
         except TimeoutError:
             print('Socket timeout, ending listening for server messages')
@@ -152,6 +115,7 @@ class TCPClient:
     
     def start(self):
         try:
+            print(f"Connecting to {self.server_address}:{self.server_port}")  # デバッグ用ログ出力
             self.sock.connect((self.server_address, self.server_port))
         except socket.error as err:
             print(err)
@@ -174,14 +138,13 @@ class UDPClient:
     def protocol_header(self, room_name_bytes_len, token_bytes_len):
         return room_name_bytes_len.to_bytes(1, "big") + token_bytes_len.to_bytes(1, "big")
     
-    # メッセージ送信
     def send_message(self):
         while True:
-            message = input(f"[{self.info['user_name']}] ").strip()
+            message = input(f"[{self.info['user_name']}] ")
             while message == "":
                 print("\033[1A", end="") 
-                message = input(f"[{self.info['user_name']}] ").strip()
-            print("\033[1A\033[K", end="") 
+                message = input(f"[{self.info['user_name']}] ")
+            print("\033[1A", end="") 
             print(f"[{self.info['user_name']}] {message}")
             message_bytes = message.encode('utf-8')
             room_name_bytes = self.info["room_name"].encode('utf-8')
@@ -190,14 +153,13 @@ class UDPClient:
             token_bytes_len = len(token_bytes)
             header = self.protocol_header(room_name_bytes_len, token_bytes_len)
             body = room_name_bytes + token_bytes + message_bytes
+            print(f"Sending UDP message: {header + body}")  # デバッグ用ログ出力
             self.sock.sendto(header + body, (self.server_address, self.udp_server_port))
     
-    # メッセージ受信
     def receive_message(self):
         while True:
             data, _ = self.sock.recvfrom(4096)
 
-            # タイムアウト処理
             if data.decode('utf-8') == "timeout":
                 print("タイムアウトしました")
                 self.sock.close()
@@ -215,8 +177,6 @@ class UDPClient:
             print("\033[1A") 
             print(f'[{user_name}] {message}')
             print(f'[{self.info["user_name"]}] ', end='', flush=True)
-
-
 
     def start(self):
         send_thread = threading.Thread(target=self.send_message)
