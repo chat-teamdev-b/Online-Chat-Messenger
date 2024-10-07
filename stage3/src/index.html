@@ -1,0 +1,17 @@
+<!-- index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Electron TCP Client</title>
+</head>
+<body>
+  <h1>Electron TCP Client</h1>
+  <input type="text" id="inputField" placeholder="Enter message" />
+  <button onclick="sendDataToServer(document.getElementById('inputField').value)">Send</button>
+  <div id="responseHistory"></div>
+
+  <script src="renderer.js"></script>
+</body>
+</html>
