@@ -4,12 +4,15 @@ import threading
 import os
 import struct
 import json
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 
 class TCPClient:
-    def __init__(self, server_address, server_port):
+    def __init__(self, server_address, server_port, public_key):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_address = server_address
         self.server_port = server_port
+        self.public_key = public_key
         self.info = {}
     
     # ヘッダー作成
@@ -98,9 +101,12 @@ class TCPClient:
         room_name_bytes_size = len(room_name_bytes)
 
         password = self.input_password(operation)
+        public_key = self.public_key.export_key().decode('utf-8')
+
         json_payload = {
             "user_name": user_name,
-            "password": password
+            "password": password,
+            "public_key": public_key
         }
         json_string_payload_bytes = json.dumps(json_payload).encode('utf-8')
         json_string_payload_bytes_size = len(json_string_payload_bytes)
@@ -164,11 +170,12 @@ class TCPClient:
 
 
 class UDPClient:
-    def __init__(self, server_address,  udp_server_port, info):
+    def __init__(self, server_address,  udp_server_port, info, private_key):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.server_address = server_address
         self.udp_server_port = udp_server_port
         self.info = info
+        self.private_key = private_key
         self.sock.bind(info["address_port"])
     
     def protocol_header(self, room_name_bytes_len, token_bytes_len):
@@ -195,7 +202,9 @@ class UDPClient:
     # メッセージ受信
     def receive_message(self):
         while True:
-            data, _ = self.sock.recvfrom(4096)
+            cipherdata, _ = self.sock.recvfrom(4096)
+            decipher_rsa = PKCS1_OAEP.new(self.private_key)
+            data = decipher_rsa.decrypt(cipherdata)
 
             # タイムアウト処理
             if data.decode('utf-8') == "timeout":
@@ -233,9 +242,13 @@ if __name__ == "__main__":
     tcp_server_port = 9001
     udp_server_port = 9002
 
-    tcp_client = TCPClient(server_address, tcp_server_port)
+    # 秘密鍵と公開鍵作成
+    private_key = RSA.generate(2048)
+    public_key = private_key.publickey()
+    
+    tcp_client = TCPClient(server_address, tcp_server_port, public_key)
     info = tcp_client.start()
 
     if "token" in info.keys():
-        udp_client = UDPClient(server_address, udp_server_port, info)
+        udp_client = UDPClient(server_address, udp_server_port, info, private_key)
         udp_client.start()

@@ -7,6 +7,8 @@ import struct
 import os
 import json
 import hashlib
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 
 
 class TCPServer:
@@ -39,7 +41,6 @@ class TCPServer:
                 body = connection.recv(room_name_size + json_operation_payload_size)
                 room_name = body[:room_name_size].decode("utf-8")
                 json_operation_payload = json.loads(body[room_name_size:].decode("utf-8"))
-
 
                 token = secrets.token_bytes(3)
                 token_len_bytes = len(token).to_bytes(1, "big")
@@ -122,8 +123,11 @@ class UDPServer:
             for client_token in self.chat_rooms_obj.chat_rooms[room_name]['members'].keys():
                 if client_token != token:
                     destination_client_address = self.chat_rooms_obj.chat_rooms[room_name]['members'][client_token][0][1]
+
+                    cipherdata = self.encrypt(data, room_name, client_token)
+
                     try:
-                        self.sock.sendto(data, destination_client_address)
+                        self.sock.sendto(cipherdata, destination_client_address)
                     except Exception as e:
                         print(f"クライアントへメッセージを送信できませんでした: {e}")
             
@@ -146,15 +150,27 @@ class UDPServer:
                             for client_token_sub in copy_chat_rooms[chat_room]['members'].keys():
                                 if client_token_sub != client_token:
                                     message = "nohost".encode("utf-8")
-                                self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
+                                ciphermessage = self.encrypt(message, chat_room, client_token_sub)
+                                self.sock.sendto(ciphermessage, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
                             del self.chat_rooms_obj.chat_rooms[chat_room]
 
                         # それ以外の場合は対象のクライアントのみ退出させる
                         else:
-                            self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token][0][1])
+                            ciphermessage = self.encrypt(message, chat_room, client_token)
+                            self.sock.sendto(ciphermessage, copy_chat_rooms[chat_room]['members'][client_token][0][1])
                             del self.chat_rooms_obj.chat_rooms[chat_room]['members'][client_token]
 
             time.sleep(1)
+    
+    # 各クライアントの公開鍵でメッセージを暗号化
+    def encrypt(self, data, room_name, client_token):
+        public_key_data = self.chat_rooms_obj.chat_rooms[room_name]['members'][client_token][0][2]
+        public_key = RSA.import_key(public_key_data)
+        cipher_rsa = PKCS1_OAEP.new(public_key)
+        cipherdata = cipher_rsa.encrypt(data)
+        
+        return cipherdata
+
 
 class ChatRoom:
     def __init__(self):
@@ -167,6 +183,8 @@ class ChatRoom:
         else:
             user_name = json_operation_payload.get('user_name')
             password = json_operation_payload.get('password')
+            public_key = json_operation_payload.get('public_key')
+
             if password == None:
                 hashed_password = None
             else:
@@ -176,7 +194,7 @@ class ChatRoom:
 
             self.chat_rooms[room_name] = {'host' : None,  'members' : None, 'hashed_password' : hashed_password}
             self.chat_rooms[room_name]['host'] = {token : (user_name, client_address)}
-            self.chat_rooms[room_name]['members'] = {token : [(user_name, client_address), time.time()]}
+            self.chat_rooms[room_name]['members'] = {token : [(user_name, client_address, public_key), time.time()]}
         
         print(self.chat_rooms)
     
@@ -193,7 +211,8 @@ class ChatRoom:
 
             if self.chat_rooms[room_name]['hashed_password'] == hashed_password:
                 user_name = json_operation_payload.get('user_name')
-                self.chat_rooms[room_name]['members'][token] = [(user_name, client_address), time.time()]
+                public_key = json_operation_payload.get('public_key')
+                self.chat_rooms[room_name]['members'][token] = [(user_name, client_address, public_key), time.time()]
             else:
                 raise ValueError("パスワードが間違っています。")
         else:
