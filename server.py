@@ -7,13 +7,17 @@ import struct
 import os
 import json
 import hashlib
+from Crypto.PublicKey import RSA
+from Crypto.Cipher import PKCS1_OAEP
 
 
 class TCPServer:
-    def __init__(self, server_address, server_port):
+    def __init__(self, server_address, server_port, chat_rooms_obj, server_public_key):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_address = server_address
         self.server_port = server_port
+        self.chat_rooms_obj = chat_rooms_obj
+        self.server_public_key = server_public_key
         print('Starting up on {}'.format(server_address))
 
         # 前の接続が残っていた場合接続解除
@@ -29,6 +33,8 @@ class TCPServer:
             connection, client_address = self.sock.accept()
             try:
                 print('connection from', client_address)
+
+                # 受信データ処理
                 header = connection.recv(32)
                 room_name_size = int.from_bytes(header[:1], "big")
                 operation = int.from_bytes(header[1:2], "big")
@@ -40,13 +46,17 @@ class TCPServer:
                 room_name = body[:room_name_size].decode("utf-8")
                 json_operation_payload = json.loads(body[room_name_size:].decode("utf-8"))
 
-
+                # 送信データ作成・送信
                 token = secrets.token_bytes(3)
                 token_len_bytes = len(token).to_bytes(1, "big")
                 ip_bytes = socket.inet_aton(client_address[0])
                 ip_bytes_len = len(ip_bytes).to_bytes(1, "big")
                 port_bytes = struct.pack('!H', client_address[1])
-                data = token_len_bytes + ip_bytes_len + token + ip_bytes + port_bytes
+                port_bytes_len = len(port_bytes).to_bytes(1, "big")
+                ex_server_public_key = self.server_public_key.export_key()
+
+                data = token_len_bytes + ip_bytes_len + port_bytes_len + token + ip_bytes + port_bytes + ex_server_public_key
+
                 if state == 0x01: # リクエスト
                     if operation == 1:
                         chat_rooms_obj.create_room(room_name, json_operation_payload, token, client_address)
@@ -81,14 +91,15 @@ class TCPServer:
             finally:
                 print("Closing current connection")
                 connection.close()
-
+    
 
 class UDPServer:
-    def __init__(self, server_address, server_port, chat_rooms_obj):
+    def __init__(self, server_address, server_port, chat_rooms_obj, server_private_key):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.server_address = server_address
         self.server_port = server_port
         self.chat_rooms_obj = chat_rooms_obj
+        self.server_private_key = server_private_key
         self.TIMEOUT = 30
         self.sock.bind((server_address, server_port))
     
@@ -96,7 +107,10 @@ class UDPServer:
     def handle_message(self):
         while True:
             # クライアントからのメッセージ受信
-            data, client_address = self.sock.recvfrom(4096)
+            cipherdata, client_address = self.sock.recvfrom(4096)
+
+            decipher_rsa = PKCS1_OAEP.new(self.server_private_key)
+            data = decipher_rsa.decrypt(cipherdata)
 
             header = data[:2]
             room_name_size = int.from_bytes(header[:1], "big")
@@ -122,11 +136,22 @@ class UDPServer:
             for client_token in self.chat_rooms_obj.chat_rooms[room_name]['members'].keys():
                 if client_token != token:
                     destination_client_address = self.chat_rooms_obj.chat_rooms[room_name]['members'][client_token][0][1]
+
+                    cipherdata = self.encrypt(data, room_name, client_token)
+
                     try:
-                        self.sock.sendto(data, destination_client_address)
+                        self.sock.sendto(cipherdata, destination_client_address)
                     except Exception as e:
                         print(f"クライアントへメッセージを送信できませんでした: {e}")
-            
+    
+    # 各クライアントの公開鍵でメッセージを暗号化
+    def encrypt(self, data, room_name, client_token):
+        public_key_data = self.chat_rooms_obj.chat_rooms[room_name]['members'][client_token][0][2]
+        public_key = RSA.import_key(public_key_data)
+        cipher_rsa = PKCS1_OAEP.new(public_key)
+        cipherdata = cipher_rsa.encrypt(data)
+        
+        return cipherdata
 
     # 非アクティブなクライアントの退出処理
     def remove_inactive_clients(self):
@@ -146,15 +171,18 @@ class UDPServer:
                             for client_token_sub in copy_chat_rooms[chat_room]['members'].keys():
                                 if client_token_sub != client_token:
                                     message = "nohost".encode("utf-8")
-                                self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
+                                ciphermessage = self.encrypt(message, chat_room, client_token_sub)
+                                self.sock.sendto(ciphermessage, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
                             del self.chat_rooms_obj.chat_rooms[chat_room]
 
                         # それ以外の場合は対象のクライアントのみ退出させる
                         else:
-                            self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token][0][1])
+                            ciphermessage = self.encrypt(message, chat_room, client_token)
+                            self.sock.sendto(ciphermessage, copy_chat_rooms[chat_room]['members'][client_token][0][1])
                             del self.chat_rooms_obj.chat_rooms[chat_room]['members'][client_token]
 
             time.sleep(1)
+
 
 class ChatRoom:
     def __init__(self):
@@ -167,6 +195,8 @@ class ChatRoom:
         else:
             user_name = json_operation_payload.get('user_name')
             password = json_operation_payload.get('password')
+            public_key = json_operation_payload.get('public_key')
+
             if password == None:
                 hashed_password = None
             else:
@@ -176,7 +206,7 @@ class ChatRoom:
 
             self.chat_rooms[room_name] = {'host' : None,  'members' : None, 'hashed_password' : hashed_password}
             self.chat_rooms[room_name]['host'] = {token : (user_name, client_address)}
-            self.chat_rooms[room_name]['members'] = {token : [(user_name, client_address), time.time()]}
+            self.chat_rooms[room_name]['members'] = {token : [(user_name, client_address, public_key), time.time()]}
         
         print(self.chat_rooms)
     
@@ -193,7 +223,8 @@ class ChatRoom:
 
             if self.chat_rooms[room_name]['hashed_password'] == hashed_password:
                 user_name = json_operation_payload.get('user_name')
-                self.chat_rooms[room_name]['members'][token] = [(user_name, client_address), time.time()]
+                public_key = json_operation_payload.get('public_key')
+                self.chat_rooms[room_name]['members'][token] = [(user_name, client_address, public_key), time.time()]
             else:
                 raise ValueError("パスワードが間違っています。")
         else:
@@ -207,9 +238,15 @@ if __name__ == "__main__":
     server_address = '0.0.0.0'
     tcp_server_port = 9001
     udp_server_port = 9002
+
     chat_rooms_obj = ChatRoom()
-    tcp_server = TCPServer(server_address, tcp_server_port)
-    udp_server = UDPServer(server_address, udp_server_port, chat_rooms_obj)
+
+    # 秘密鍵と公開鍵作成
+    server_private_key = RSA.generate(2048)
+    server_public_key = server_private_key.publickey()
+
+    tcp_server = TCPServer(server_address, tcp_server_port, chat_rooms_obj, server_public_key)
+    udp_server = UDPServer(server_address, udp_server_port, chat_rooms_obj, server_private_key)
     thread_tcp_server = threading.Thread(target=tcp_server.handle_message)    
     thread_udp_server = threading.Thread(target=udp_server.handle_message)
     thread_tcp_server.start()
