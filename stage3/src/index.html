@@ -1,17 +1,23 @@
 <!-- index.html -->
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ja">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Electron TCP Client</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat Room</title>
 </head>
 <body>
-  <h1>Electron TCP Client</h1>
-  <input type="text" id="inputField" placeholder="Enter message" />
-  <button onclick="sendDataToServer(document.getElementById('inputField').value)">Send</button>
-  <div id="responseHistory"></div>
+    <h1>チャットルーム</h1>
+    <input type="text" id="username" placeholder="ユーザー名を入力">
+    <select id="action">
+        <option value="create">ルームを作成</option>
+        <option value="join">ルームに参加</option>
+    </select>
+    <input type="text" id="roomname" placeholder="ルーム名を入力">
+    <input type="password" id="password" placeholder="パスワード（任意）">
+    <button id="connect">接続</button>
+    <div id="chat"></div>
 
-  <script src="renderer.js"></script>
+    <script src="renderer.js"></script>
 </body>
 </html>
