@@ -52,8 +52,8 @@ class TCPServer:
                         chat_rooms_obj.join_room(room_name, json_operation_payload, token, client_address)
                     
                     response_state = bytes([0x00]) # 成功
-                    connection.send(response_state)
-                    #connection.send(data)
+                    data = response_state + data
+                    connection.send(data)
             
             except ValueError as ve:
                 print('Error: ' + str(ve))
