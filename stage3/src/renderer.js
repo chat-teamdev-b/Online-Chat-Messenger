@@ -15,6 +15,11 @@ class TCPClient {
         });
 
         this.client.on('data', (data) => {
+            console.log('datalen:', data.length);
+            console.log('rawdata:', data);
+            console.log('バイト列の内容（16進数）:', data.toString('hex'));
+            const receivedString = data.toString('utf-8');
+            console.log('data:', receivedString);
             this.appendMessage(`受信: ${data.toString()}`);
         });
 
@@ -41,10 +46,12 @@ class TCPClient {
             password: password
         };
         const jsonStringPayloadBytes = Buffer.from(JSON.stringify(jsonPayload), 'utf-8');
-        // console.log(jsonStringPayloadBytes)
+        console.log(jsonStringPayloadBytes)
         const jsonStringPayloadBytesSize = jsonStringPayloadBytes.length;
+        console.log("json_operation_payload_size")
+        console.log(jsonStringPayloadBytesSize)
 
-        const header = this.protocolHeader(roomNameBytesSize, operation, 0, jsonStringPayloadBytesSize);
+        const header = this.protocolHeader(roomNameBytesSize, operation, 1, jsonStringPayloadBytesSize);
         return Buffer.concat([header, roomNameBytes, jsonStringPayloadBytes]);
     }
 
@@ -59,7 +66,10 @@ class TCPClient {
       stateSizeBytes.writeUInt8(state);
 
       const jsonStringPayloadSizeBytes = Buffer.alloc(29);
-      jsonStringPayloadSizeBytes.writeUInt32BE(jsonStringPayloadBytesSize, 0);
+      const bigIntBytes = jsonStringPayloadBytesSize.toString(16).padStart(29 * 2, '0');
+      const byteArray = Buffer.from(bigIntBytes, 'hex');
+  
+      byteArray.copy(jsonStringPayloadSizeBytes, 29 - byteArray.length);
   
       return Buffer.concat([roomNameSizeBytes, operationSizeBytes, stateSizeBytes, jsonStringPayloadSizeBytes]);
   }

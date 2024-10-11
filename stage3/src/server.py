@@ -16,11 +16,7 @@ class TCPServer:
         self.server_port = server_port
         print('Starting up on {}'.format(server_address))
 
-        # 前の接続が残っていた場合接続解除
-        try:
-            os.unlink(server_address)
-        except FileNotFoundError:
-            pass
+        self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.sock.bind((server_address, server_port))
         self.sock.listen()
     
@@ -30,11 +26,8 @@ class TCPServer:
             try:
                 print('connection from', client_address)
 
-                data = connection.recv(1024)
-                print(data)
-
-
                 header = connection.recv(32)
+
                 room_name_size = int.from_bytes(header[:1], "big")
                 operation = int.from_bytes(header[1:2], "big")
                 state = int.from_bytes(header[2:3], "big")
@@ -44,7 +37,6 @@ class TCPServer:
                 body = connection.recv(room_name_size + json_operation_payload_size)
                 room_name = body[:room_name_size].decode("utf-8")
                 json_operation_payload = json.loads(body[room_name_size:].decode("utf-8"))
-
 
                 token = secrets.token_bytes(3)
                 token_len_bytes = len(token).to_bytes(1, "big")
@@ -61,7 +53,7 @@ class TCPServer:
                     
                     response_state = bytes([0x00]) # 成功
                     connection.send(response_state)
-                    connection.send(data)
+                    #connection.send(data)
             
             except ValueError as ve:
                 print('Error: ' + str(ve))
