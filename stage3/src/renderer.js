@@ -9,75 +9,87 @@ class TCPClient {
     }
 
     connect() {
-        this.client.connect(this.server_port, this.server_address, () => {
-            this.appendMessage('サーバーに接続しました');
-            const message = this.createMessage();
-            this.sendMessage(message);
-        });
+        return new Promise((resolve, reject) => {
+            this.client.connect(this.server_port, this.server_address, () => {
+                this.appendMessage('サーバーに接続しました');
+                const message = this.createMessage();
+                this.sendMessage(message);
+            });
 
-        this.client.on('data', (data) => {
-            let offset = 0;
+            let success = false;
 
-            // 0. statusを取得
-            const status = data.readUInt8(offset);
-            offset += 1;
+            this.client.on('data', (data) => {
+                let offset = 0;
 
-            if (status === 0x00){
-                // 1. トークンの長さを取得
-                const tokenLen = data.readUInt8(offset);
+                // 0. statusを取得
+                const status = data.readUInt8(offset);
                 offset += 1;
-            
-                // 2. IPアドレスの長さを取得
-                const ipLen = data.readUInt8(offset);
-                offset += 1;
-            
-                // 3. トークンを取得
-                const token = data.slice(offset, offset + tokenLen);
-                this.info['token'] = token;
-                offset += tokenLen;
-            
-                // 4. IPアドレスを取得
-                const ipBytes = data.slice(offset, offset + ipLen);
-                const client_address = bytesToIp(ipBytes);
-                offset += ipLen;
-            
-                // 5. ポート番号を取得
-                const client_port = data.readUInt16BE(offset);
-                offset += 2;
-                const client_address_port = [client_address, client_port];
-                this.info['client_address_port'] = client_address_port;
-            
-                // 必要に応じて画面に表示
-                this.appendMessage(`受信:
-                status: ${status}
-                トークン長: ${tokenLen}
-                IP長: ${ipLen}
-                トークン: ${token.toString('hex')}
-                IP: ${client_address}
-                ポート: ${client_port}`);
 
-            }
-            else if (status === 0x03){
-                this.appendMessage('ルームは既に存在します');
-            }
-            else if (status === 0x04){
-                this.appendMessage('パスワードが間違っています');
-            }
-            else if (status === 0x05){
-                this.appendMessage('ルームが見つかりません');
-            }
-            else {
-                this.appendMessage('エラーが発生しました');
-            }
-        });
-        
+                if (status === 0x00){
+                    // 1. トークンの長さを取得
+                    const tokenLen = data.readUInt8(offset);
+                    offset += 1;
+                
+                    // 2. IPアドレスの長さを取得
+                    const ipLen = data.readUInt8(offset);
+                    offset += 1;
+                
+                    // 3. トークンを取得
+                    const token = data.slice(offset, offset + tokenLen);
+                    this.info['token'] = token;
+                    offset += tokenLen;
+                
+                    // 4. IPアドレスを取得
+                    const ipBytes = data.slice(offset, offset + ipLen);
+                    const client_address = bytesToIp(ipBytes);
+                    offset += ipLen;
+                
+                    // 5. ポート番号を取得
+                    const client_port = data.readUInt16BE(offset);
+                    offset += 2;
+                    const client_address_port = (client_address, client_port);
+                    this.info['client_address_port'] = client_address_port;
+                
+                    // 必要に応じて画面に表示
+                    this.appendMessage(`受信:
+                    status: ${status}
+                    トークン長: ${tokenLen}
+                    IP長: ${ipLen}
+                    トークン: ${token.toString('hex')}
+                    IP: ${client_address}
+                    ポート: ${client_port}`);
 
-        this.client.on('error', (err) => {
-            this.appendMessage(`エラー: ${err.message}`);
-        });
+                    success = true;
+                }
+                else if (status === 0x03){
+                    this.appendMessage('ルームは既に存在します');
+                    reject(new Error('ルームは既に存在します'));
+                }
+                else if (status === 0x04){
+                    this.appendMessage('パスワードが間違っています');
+                    reject(new Error('パスワードが間違っています'));
+                }
+                else if (status === 0x05){
+                    this.appendMessage('ルームが見つかりません');
+                    reject(new Error('ルームが見つかりません'));
+                }
+                else {
+                    this.appendMessage('エラーが発生しました');
+                    reject(new Error('エラーが発生しました'));
+                }
+            });
+            
 
-        this.client.on('close', () => {
-            this.appendMessage('接続が閉じられました');
+            this.client.on('error', (err) => {
+                this.appendMessage(`エラー: ${err.message}`);
+                reject(err);
+                success = false;
+            });
+
+            this.client.on('close', () => {
+                this.appendMessage('接続が閉じられました');
+                if (success) resolve();
+            });
         });
     }
 
@@ -110,24 +122,24 @@ class TCPClient {
     }
 
     protocolHeader(roomNameBytesSize, operation, state, jsonStringPayloadBytesSize) {
-      const roomNameSizeBytes = Buffer.alloc(1);
-      roomNameSizeBytes.writeUInt8(roomNameBytesSize);
-  
-      const operationSizeBytes = Buffer.alloc(1);
-      operationSizeBytes.writeUInt8(operation);
-  
-      const stateSizeBytes = Buffer.alloc(1);
-      stateSizeBytes.writeUInt8(state);
+        const roomNameSizeBytes = Buffer.alloc(1);
+        roomNameSizeBytes.writeUInt8(roomNameBytesSize);
+    
+        const operationSizeBytes = Buffer.alloc(1);
+        operationSizeBytes.writeUInt8(operation);
+    
+        const stateSizeBytes = Buffer.alloc(1);
+        stateSizeBytes.writeUInt8(state);
 
-      const jsonStringPayloadSizeBytes = Buffer.alloc(29);
-      const bigIntBytes = jsonStringPayloadBytesSize.toString(16).padStart(29 * 2, '0');
-      const byteArray = Buffer.from(bigIntBytes, 'hex');
-  
-      byteArray.copy(jsonStringPayloadSizeBytes, 29 - byteArray.length);
-  
-      return Buffer.concat([roomNameSizeBytes, operationSizeBytes, stateSizeBytes, jsonStringPayloadSizeBytes]);
-  }
-  
+        const jsonStringPayloadSizeBytes = Buffer.alloc(29);
+        const bigIntBytes = jsonStringPayloadBytesSize.toString(16).padStart(29 * 2, '0');
+        const byteArray = Buffer.from(bigIntBytes, 'hex');
+    
+        byteArray.copy(jsonStringPayloadSizeBytes, 29 - byteArray.length);
+    
+        return Buffer.concat([roomNameSizeBytes, operationSizeBytes, stateSizeBytes, jsonStringPayloadSizeBytes]);
+    }
+
     sendMessage(message) {
         console.log("送信するメッセージ:", message);
         this.client.write(message);
@@ -138,6 +150,7 @@ class TCPClient {
         const messageElement = document.createElement('div');
         messageElement.textContent = message;
         chatDiv.appendChild(messageElement);
+        chatDiv.scrollTop = chatDiv.scrollHeight;
     }
 
     close() {
@@ -169,11 +182,103 @@ function bytesToIp(buffer) {
     }
 }
 
+
+
+
+const dgram = require('dgram');
+
+class UDPClient {
+    constructor(serverAddress, udpServerPort, info) {
+        this.sock = dgram.createSocket('udp4');
+        this.serverAddress = serverAddress;
+        this.udpServerPort = udpServerPort;
+        this.info = info;
+        this.sock.bind(info.client_address_port);
+    }
+
+    protocolHeader(roomNameBytesLen, tokenBytesLen) {
+        const buffer = Buffer.alloc(2);
+        buffer.writeUInt8(roomNameBytesLen, 0);
+        buffer.writeUInt8(tokenBytesLen, 1);
+        return buffer;
+    }
+
+    sendMessage(message) {
+        const messageBytes = Buffer.from(message, 'utf-8');
+        const roomNameBytes = Buffer.from(this.info.room_name, 'utf-8');
+        const roomNameBytesLen = roomNameBytes.length;
+        const tokenBytes = Buffer.from(this.info.token);
+        const tokenBytesLen = tokenBytes.length;
+        const header = this.protocolHeader(roomNameBytesLen, tokenBytesLen);
+        const body = Buffer.concat([roomNameBytes, tokenBytes, messageBytes]);
+        this.sock.send(Buffer.concat([header, body]), this.udpServerPort, this.serverAddress, (err) => {
+            if (err) {
+                this.displayMessage(`メッセージ送信エラー: ${err.message}`);
+            }
+        });
+    }
+
+    receiveMessage() {
+        this.sock.on('message', (data) => {
+            console.log("sssss")
+            const userNameBytesLen = data.readUInt8(0);
+            const userName = data.slice(1, 1 + userNameBytesLen).toString('utf-8');
+            const messageContent = data.slice(1 + userNameBytesLen).toString('utf-8');
+            this.displayMessage(`[${userName}] ${messageContent}`);
+        });
+    }
+
+    displayMessage(message, isSent = false) {
+        const chatDiv = document.getElementById('chat');
+        const messageElement = document.createElement('div');
+        messageElement.textContent = message;
+
+        // 送信されたメッセージを右寄せし、背景色を設定
+        if (isSent) {
+            messageElement.classList.add('sent-message');
+        } else {
+            // 受信メッセージの背景色を設定
+            messageElement.classList.add('received-message');
+        }
+
+        chatDiv.appendChild(messageElement);
+        chatDiv.scrollTop = chatDiv.scrollHeight; // 最新メッセージにスクロール
+    }
+
+    start() {
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendMessage');
+    
+        sendButton.addEventListener('click', () => {
+            const message = messageInput.value.trim();
+            if (message) {
+                this.sendMessage(message);
+                this.displayMessage(`[${this.info.user_name}] ${message}`, true);
+                messageInput.value = '';
+            }
+        });
+        
+        this.receiveMessage();  
+    }
+}
+
+
 document.addEventListener('DOMContentLoaded', () => {
     const connectButton = document.getElementById('connect');
-    const tcpClient = new TCPClient('0.0.0.0', 9001); // ローカルホストに接続
-    
-    connectButton.addEventListener('click', () => {
-        tcpClient.connect();
+
+    const tcpClient = new TCPClient('0.0.0.0', 9001);
+
+    connectButton.addEventListener('click', async () => {
+        try {
+            await tcpClient.connect(); 
+
+            if ("token" in tcpClient.info) {
+                const udpClient = new UDPClient('0.0.0.0', 9002, tcpClient.info);
+                udpClient.displayMessage('UDP接続が開始されました。');
+                udpClient.start();
+            }
+        } catch (error) {
+            console.error('接続に失敗しました:', error);
+        }
     });
 });

@@ -79,6 +79,88 @@ class TCPServer:
                 print("Closing current connection")
                 connection.close()
 
+
+
+
+class UDPServer:
+    def __init__(self, server_address, server_port, chat_rooms_obj):
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.server_address = server_address
+        self.server_port = server_port
+        self.chat_rooms_obj = chat_rooms_obj
+        self.TIMEOUT = 30
+        self.sock.bind((server_address, server_port))
+    
+    # クライアントからのメッセージを受信し、同じルーム内の全てのクライアントへ転送
+    def handle_message(self):
+        while True:
+            # クライアントからのメッセージ受信
+            data, client_address = self.sock.recvfrom(4096)
+
+            header = data[:2]
+            room_name_size = int.from_bytes(header[:1], "big")
+            token_size = int.from_bytes(header[1:2], "big")
+
+            body = data[2:]
+            room_name = body[:room_name_size].decode("utf-8")
+            token = body[room_name_size : room_name_size + token_size]
+            message = body[room_name_size + token_size:].decode("utf-8")
+
+            user_name = self.chat_rooms_obj.chat_rooms[room_name]['members'][token][0][0]
+            user_name_bytes = user_name.encode("utf-8")
+            user_name_bytes_len = len(user_name_bytes)
+            print(f"[{user_name}] {message}")
+
+            # クライアントからの最新メッセージ受信時間を更新
+            self.chat_rooms_obj.chat_rooms[room_name]['members'][token][1] = time.time()
+
+            # 各クライアントへメッセージ送信
+            message_bytes = message.encode("utf-8")
+            data = user_name_bytes_len.to_bytes(1, "big") + user_name_bytes + message_bytes
+
+            for client_token in self.chat_rooms_obj.chat_rooms[room_name]['members'].keys():
+                if client_token != token:
+                    destination_client_address = self.chat_rooms_obj.chat_rooms[room_name]['members'][client_token][0][1]
+                    print(destination_client_address)
+                    try:
+                        self.sock.sendto(data, destination_client_address)
+                        print("送信完了")
+                    except Exception as e:
+                        print(f"クライアントへメッセージを送信できませんでした: {e}")
+            
+
+    # 非アクティブなクライアントの退出処理
+    def remove_inactive_clients(self):
+        while True:
+            current_time = time.time()
+            copy_chat_rooms = copy.deepcopy(self.chat_rooms_obj.chat_rooms)
+            for chat_room in copy_chat_rooms.keys():
+                for client_token in copy_chat_rooms[chat_room]['members'].keys():
+
+                    # クライアントからのメッセージ送信が一定時間されない場合、そのクライアントを退出させる
+                    if current_time - copy_chat_rooms[chat_room]['members'][client_token][1] > self.TIMEOUT:
+                        print(f"クライアント {copy_chat_rooms[chat_room]['members'][client_token][0][1]} がタイムアウトしました。")
+                        message = "timeout".encode("utf-8")
+
+                        # 削除されたクライアントがホストの場合はチャットルームごと閉じる
+                        if client_token in copy_chat_rooms[chat_room]['host']:
+                            for client_token_sub in copy_chat_rooms[chat_room]['members'].keys():
+                                if client_token_sub != client_token:
+                                    message = "nohost".encode("utf-8")
+                                self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
+                            del self.chat_rooms_obj.chat_rooms[chat_room]
+
+                        # それ以外の場合は対象のクライアントのみ退出させる
+                        else:
+                            self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token][0][1])
+                            del self.chat_rooms_obj.chat_rooms[chat_room]['members'][client_token]
+
+            time.sleep(1)
+
+
+
+
+
 class ChatRoom:
     def __init__(self):
         self.chat_rooms = {}
@@ -132,11 +214,11 @@ if __name__ == "__main__":
     udp_server_port = 9002
     chat_rooms_obj = ChatRoom()
     tcp_server = TCPServer(server_address, tcp_server_port)
-    # udp_server = UDPServer(server_address, udp_server_port, chat_rooms_obj)
+    udp_server = UDPServer(server_address, udp_server_port, chat_rooms_obj)
     thread_tcp_server = threading.Thread(target=tcp_server.handle_message)    
-    # thread_udp_server = threading.Thread(target=udp_server.handle_message)
+    thread_udp_server = threading.Thread(target=udp_server.handle_message)
     thread_tcp_server.start()
-    # threading.Thread(target=udp_server.remove_inactive_clients, daemon=True).start() 
-    # thread_udp_server.start()
+    threading.Thread(target=udp_server.remove_inactive_clients, daemon=True).start() 
+    thread_udp_server.start()
     thread_tcp_server.join()
-    # thread_udp_server.join()
+    thread_udp_server.join()

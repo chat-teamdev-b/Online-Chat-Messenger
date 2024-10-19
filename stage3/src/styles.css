@@ -1,0 +1,40 @@
+body, html {
+  height: 100%;
+  margin: 0;
+}
+
+.chat-container {
+  height: 100vh;
+  overflow: hidden;
+}
+
+#chat {
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.message {
+  display: inline-block;
+  max-width: 75%;
+  padding: 10px;
+  border-radius: 15px;
+  margin-bottom: 5px;
+  word-wrap: break-word;
+}
+
+.sent-message {
+  background-color: #d4edda;
+  align-self: flex-end;
+}
+
+.received-message {
+  background-color: #cce5ff;
+  align-self: flex-start;
+}
+
+.input-group {
+  background-color: #fff;
+  border-top: 1px solid #ccc;
+  padding: 10px;
+}
