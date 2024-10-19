@@ -260,6 +260,21 @@ class UDPClient {
     receiveMessage() {
         this.sock.on('message', (encryptedData) => {
             const data = this.decryptWithPrivateKey(encryptedData, this.client_privateKey);
+
+            const dataStr = data.toString('utf-8');
+            console.log(dataStr)
+            if (dataStr === "timeout") {
+                this.displayMessage("タイムアウトしました");
+                this.sock.close();
+                // ルーム作成・参加ページへ画面遷移処理
+
+            } else if (dataStr === "nohost") {
+                this.displayMessage("ホストが退出しました");
+                this.sock.close();
+                // ルーム作成・参加ページへ画面遷移処理
+
+            }
+
             const userNameBytesLen = data.readUInt8(0);
             const userName = data.slice(1, 1 + userNameBytesLen).toString('utf-8');
             const messageContent = data.slice(1 + userNameBytesLen).toString('utf-8');

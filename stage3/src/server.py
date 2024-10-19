@@ -170,12 +170,14 @@ class UDPServer:
                             for client_token_sub in copy_chat_rooms[chat_room]['members'].keys():
                                 if client_token_sub != client_token:
                                     message = "nohost".encode("utf-8")
-                                self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
+                                ciphermessage = self.encrypt(message, chat_room, client_token_sub)
+                                self.sock.sendto(ciphermessage, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
                             del self.chat_rooms_obj.chat_rooms[chat_room]
 
                         # それ以外の場合は対象のクライアントのみ退出させる
                         else:
-                            self.sock.sendto(message, copy_chat_rooms[chat_room]['members'][client_token][0][1])
+                            ciphermessage = self.encrypt(message, chat_room, client_token)
+                            self.sock.sendto(ciphermessage, copy_chat_rooms[chat_room]['members'][client_token][0][1])
                             del self.chat_rooms_obj.chat_rooms[chat_room]['members'][client_token]
 
             time.sleep(1)
