@@ -146,11 +146,11 @@ class TCPClient {
     }
 
     appendMessage(message) {
-        const chatDiv = document.getElementById('chat');
+        const connectionMessagesDiv = document.getElementById('connectionMessages');
         const messageElement = document.createElement('div');
         messageElement.textContent = message;
-        chatDiv.appendChild(messageElement);
-        chatDiv.scrollTop = chatDiv.scrollHeight;
+        connectionMessagesDiv.appendChild(messageElement);
+        connectionMessagesDiv.scrollTop = connectionMessagesDiv.scrollHeight;
     }
 
     close() {
@@ -265,6 +265,17 @@ class UDPClient {
 
 document.addEventListener('DOMContentLoaded', () => {
     const connectButton = document.getElementById('connect');
+    const connectionScreen = document.getElementById('connectionScreen');
+    const chatScreen = document.getElementById('chatScreen');
+    const exitButton = document.getElementById('exitChat');
+    const connectionMessagesDiv = document.getElementById('connectionMessages');
+    const chatDiv = document.getElementById('chat');
+    const usernameInput = document.getElementById('username');
+    const roomnameInput = document.getElementById('roomname');
+    const passwordInput = document.getElementById('password');
+    const actionSelect = document.getElementById('action');
+
+
 
     const tcpClient = new TCPClient('0.0.0.0', 9001);
 
@@ -276,9 +287,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 const udpClient = new UDPClient('0.0.0.0', 9002, tcpClient.info);
                 udpClient.displayMessage('UDP接続が開始されました。');
                 udpClient.start();
+
+                // 接続画面を非表示にし、チャット画面を表示
+                connectionScreen.classList.add('d-none');
+                chatScreen.classList.remove('d-none');
             }
         } catch (error) {
             console.error('接続に失敗しました:', error);
+            tcpClient.appendMessage('接続に失敗しました。');
         }
+    });
+
+    exitButton.addEventListener('click', () => {
+        // チャット画面を非表示にし、接続画面を表示
+        chatScreen.classList.add('d-none');
+        connectionScreen.classList.remove('d-none');
+        
+        connectionMessagesDiv.innerHTML = '';
+        chatDiv.innerHTML = '';
+
+        // 接続画面の入力フィールドをリセット
+        usernameInput.value = '';
+        roomnameInput.value = '';
+        passwordInput.value = '';
+        actionSelect.selectedIndex = 0;
     });
 });
