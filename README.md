@@ -52,16 +52,26 @@
 3. **メッセージの送信:**
    - ルームに接続後、メッセージ入力欄にメッセージを入力し、「送信」をクリックします。
 
-## フォルダ構成
-
-- `main.js`: Electronのメインプロセスで、アプリケーションウィンドウを初期化します。
-- `renderer.js`: サーバーへの接続およびチャットルームの操作を処理するクライアントサイドのロジック。
-- `server.py`: TCPおよびUDP接続を管理するPythonベースのサーバー。
+## ディレクトリ構成
+<pre>
+.
+├── README.md
+└── stage3
+    └── src
+        ├── index.html
+        ├── main.js
+        ├── package.json
+        ├── preload.js
+        ├── renderer.js
+        ├── server.py
+        └── styles.css
+</pre>
 
 ## 必要条件
 - Node.js
 - Python 3.x
-- RSA暗号化のための `pycryptodome` （`pip install pycryptodome` でインストール可能）
+- Python 用の RSA暗号化ライブラリ `pycryptodome` （`pip install pycryptodome` でインストール可能）
+- NodeJS のための RSA暗号化ライブラリ `node-rsa` (`npm install node-rsa` でインストール可能)
 
 # 注意事項
 サーバーおよびクライアントは同じネットワーク内で動作する必要があります。  
