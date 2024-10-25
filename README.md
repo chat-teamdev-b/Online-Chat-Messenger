@@ -16,7 +16,7 @@
 - [ソケットプログラミング](https://docs.python.org/3/library/socket.html): TCPおよびUDPソケットによるネットワーク通信
 - [RSA暗号化](https://cryptography.io/en/latest/hazmat/primitives/asymmetric/rsa/): メッセージのセキュリティを保つための公開鍵・秘密鍵暗号化
 
-## インストール方法
+## アプリケーションの実行方法
 
 1. このリポジトリをクローンします:
     ```bash
@@ -25,16 +25,20 @@
 
 2. 必要な依存関係をインストールします:
     ```bash
-    npm install
+    cd Online-Chat-Messenger
+    npm init -y
+    npm install -D electron
     ```
 
 3. サーバーを起動します:
     ```bash
+    cd stage3/src
     python3 server.py
     ```
 
 4. Electronアプリケーションを起動します:
     ```bash
+    cd stage3/src
     npx electron .
     ```
 
