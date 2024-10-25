@@ -20,8 +20,7 @@
 
 1. このリポジトリをクローンします:
     ```bash
-    git clone https://github.com/yourusername/yourproject.git
-    cd yourproject
+    git clone https://github.com/chat-teamdev-b/Online-Chat-Messenger.git
     ```
 
 2. 必要な依存関係をインストールします:
