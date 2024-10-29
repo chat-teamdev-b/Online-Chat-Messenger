@@ -126,6 +126,15 @@ class UDPServer:
             # クライアントからの最新メッセージ受信時間を更新
             self.chat_rooms_obj.chat_rooms[room_name]['members'][token][1] = time.time()
 
+            # グループメンバーの情報を送信
+            if message == 'getMembers':
+                members = [value[0][0] for value in self.chat_rooms_obj.chat_rooms[room_name]['members'].values()]
+                members_bytes =  json.dumps({'type': 'members', 'data': members}).encode("utf-8")
+                ciphermessage = self.encrypt(members_bytes, room_name, token)
+                self.sock.sendto(ciphermessage, client_address)
+                continue
+                
+
             # 各クライアントへメッセージ送信
             message_bytes = message.encode("utf-8")
             data = user_name_bytes_len.to_bytes(1, "big") + user_name_bytes + message_bytes
