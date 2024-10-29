@@ -260,10 +260,18 @@ class UDPClient {
     receiveMessage() {
         this.sock.on('message', (encryptedData) => {
             const data = this.decryptWithPrivateKey(encryptedData, this.client_privateKey);
-    
-            const dataStr = data.toString('utf-8');
+            let dataStr = data.toString('utf-8');
+
             console.log(dataStr)
-            if (dataStr === "timeout") {
+
+            // JSON形式ならば、解析する
+            if (this.isJSON(dataStr)){
+                dataStr = JSON.parse(dataStr);
+                if (dataStr.hasOwnProperty('type') && dataStr.type === 'members') {
+                    this.showMemberNamesInModal(dataStr.data)
+                }
+        
+            } else if (dataStr === "timeout") {
                 this.displayMessage("タイムアウトしました");
                 this.sock.close();
                 // ルーム作成・参加ページへ画面遷移処理
@@ -272,16 +280,27 @@ class UDPClient {
                 this.displayMessage("ホストが退出しました");
                 this.sock.close();
                 // ルーム作成・参加ページへ画面遷移処理
-    
+
+            } else {
+                const userNameBytesLen = data.readUInt8(0);
+                const userName = data.slice(1, 1 + userNameBytesLen).toString('utf-8');
+                const messageContent = data.slice(1 + userNameBytesLen).toString('utf-8');
+                this.displayMessage(`[${userName}] ${messageContent}`);
             }
-    
-            const userNameBytesLen = data.readUInt8(0);
-            const userName = data.slice(1, 1 + userNameBytesLen).toString('utf-8');
-            const messageContent = data.slice(1 + userNameBytesLen).toString('utf-8');
-            this.displayMessage(messageContent, false, userName);
+
         });
     }
     
+
+    // JSON形式か判定
+    isJSON(data) {
+        try {
+            JSON.parse(data);
+        } catch (e) {
+            return false;
+        }
+        return true;
+    }
 
     // 復号関数
     decryptWithPrivateKey(encryptedData, privateKey) {
@@ -325,11 +344,28 @@ class UDPClient {
         chatDiv.appendChild(messageWrapper);
         chatDiv.scrollTop = chatDiv.scrollHeight; 
     }
+
+    showMemberNamesInModal(memberNames) {
+        // モーダルにメンバーの名前を表示
+        const memberInfoDiv = document.getElementById('memberInfo');
+        memberInfoDiv.innerHTML = ''; 
     
+        memberNames.forEach(name => {
+            const memberElement = document.createElement('p');
+            memberElement.textContent = `${name}`;
+            memberInfoDiv.appendChild(memberElement);
+        });
+    
+        // モーダルを表示
+        const memberModal = new bootstrap.Modal(document.getElementById('memberModal'));
+        memberModal.show();
+    }
+
+
     start() {
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendMessage');
-
+        const showMembersButton = document.getElementById('showMembers');
     
         sendButton.addEventListener('click', () => {
             const message = messageInput.value.trim();
@@ -340,7 +376,11 @@ class UDPClient {
             }
         });
         
-        this.receiveMessage();  
+        showMembersButton.addEventListener('click', () => {
+                this.sendMessage('getMembers');
+        });
+
+        this.receiveMessage();
     }
 }
 
@@ -405,4 +445,5 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordInput.value = '';
         actionSelect.selectedIndex = 0;
     });
+
 });
