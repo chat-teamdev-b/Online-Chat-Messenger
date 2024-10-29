@@ -260,8 +260,8 @@ class UDPClient {
     receiveMessage() {
         this.sock.on('message', (encryptedData) => {
             const data = this.decryptWithPrivateKey(encryptedData, this.client_privateKey);
-
             let dataStr = data.toString('utf-8');
+
             console.log(dataStr)
 
             // JSON形式ならば、解析する
@@ -275,7 +275,7 @@ class UDPClient {
                 this.displayMessage("タイムアウトしました");
                 this.sock.close();
                 // ルーム作成・参加ページへ画面遷移処理
-
+    
             } else if (dataStr === "nohost") {
                 this.displayMessage("ホストが退出しました");
                 this.sock.close();
@@ -290,6 +290,7 @@ class UDPClient {
 
         });
     }
+    
 
     // JSON形式か判定
     isJSON(data) {
@@ -317,21 +318,31 @@ class UDPClient {
         return decryptedData;
     }
 
-    displayMessage(message, isSent = false) {
+    displayMessage(message, isSent = false, userName = null) {
         const chatDiv = document.getElementById('chat');
+        const messageWrapper = document.createElement('div');
+        const userElement = document.createElement('div');
         const messageElement = document.createElement('div');
+        
+        userElement.textContent = isSent ? this.info.user_name : userName;  
         messageElement.textContent = message;
-
-        // 送信されたメッセージを右寄せし、背景色を設定
+        
+        messageWrapper.classList.add('message-wrapper');
+        userElement.classList.add('message-user');
+        messageElement.classList.add('message');
+        
         if (isSent) {
+            messageWrapper.classList.add('sent-message-wrapper');
             messageElement.classList.add('sent-message');
         } else {
-            // 受信メッセージの背景色を設定
+            messageWrapper.classList.add('received-message-wrapper');
             messageElement.classList.add('received-message');
         }
-
-        chatDiv.appendChild(messageElement);
-        chatDiv.scrollTop = chatDiv.scrollHeight; // 最新メッセージにスクロール
+        
+        messageWrapper.appendChild(userElement);
+        messageWrapper.appendChild(messageElement);
+        chatDiv.appendChild(messageWrapper);
+        chatDiv.scrollTop = chatDiv.scrollHeight; 
     }
 
     showMemberNamesInModal(memberNames) {
@@ -360,7 +371,7 @@ class UDPClient {
             const message = messageInput.value.trim();
             if (message) {
                 this.sendMessage(message);
-                this.displayMessage(`[${this.info.user_name}] ${message}`, true);
+                this.displayMessage(` ${message}`, true);
                 messageInput.value = '';
             }
         });
@@ -385,8 +396,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const roomnameInput = document.getElementById('roomname');
     const passwordInput = document.getElementById('password');
     const actionSelect = document.getElementById('action');
-
-
+    const textCenter = document.getElementsByClassName('text-center'); // text-center要素の取得
 
     // 2048ビットのRSA鍵ペアを生成
     const key = new NodeRSA({ b: 2048 });
@@ -405,6 +415,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 const udpClient = new UDPClient('0.0.0.0', 9002, tcpClient.info, client_privateKey);
                 udpClient.displayMessage('UDP接続が開始されました。');
                 udpClient.start();
+
+                // text-centerの内容をroomnameに書き換える
+                textCenter[0].innerHTML = roomnameInput.value;
+
 
                 // 接続画面を非表示にし、チャット画面を表示
                 connectionScreen.classList.add('d-none');
@@ -425,6 +439,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatDiv.innerHTML = '';
 
         // 接続画面の入力フィールドをリセット
+        textCenter[0].innerHTML = "チャットルーム";
         usernameInput.value = '';
         roomnameInput.value = '';
         passwordInput.value = '';
