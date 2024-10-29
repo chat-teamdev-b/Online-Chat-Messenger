@@ -209,6 +209,7 @@ function bytesToIp(buffer) {
 
 
 const dgram = require('dgram');
+const { time } = require('console');
 
 class UDPClient {
     constructor(serverAddress, udpServerPort, info, client_privateKey) {
@@ -220,23 +221,26 @@ class UDPClient {
         this.sock.bind(info.client_address_port);
     }
 
-    protocolHeader(roomNameBytesLen, tokenBytesLen) {
-        const buffer = Buffer.alloc(2);
+    protocolHeader(roomNameBytesLen, tokenBytesLen, actionByteLen) {
+        const buffer = Buffer.alloc(3);
         buffer.writeUInt8(roomNameBytesLen, 0);
         buffer.writeUInt8(tokenBytesLen, 1);
+        buffer.writeUInt8(actionByteLen, 2);
         return buffer;
     }
 
-    sendMessage(message) {
+    sendMessage(message, action) {
         const messageBytes = Buffer.from(message, 'utf-8');
         const roomNameBytes = Buffer.from(this.info.room_name, 'utf-8');
         const roomNameBytesLen = roomNameBytes.length;
         const tokenBytes = Buffer.from(this.info.token);
         const tokenBytesLen = tokenBytes.length;
-        const header = this.protocolHeader(roomNameBytesLen, tokenBytesLen);
-        const body = Buffer.concat([roomNameBytes, tokenBytes, messageBytes]);
-        const data = Buffer.concat([header, body])
-        const cipherdata = this.encryptWithPublicKey(this.info['server_publicKey'], data);
+        const actionByte = Buffer.from(action, 'utf-8');
+        const actionByteLen = actionByte.length;
+        const header = this.protocolHeader(roomNameBytesLen, tokenBytesLen, actionByteLen);
+        const body = Buffer.concat([roomNameBytes, tokenBytes,actionByte, messageBytes]);
+        const data = Buffer.concat([header, body]);
+        const cipherdata = this.encryptWithPublicKey(this.info.server_publicKey, data);
         this.sock.send(cipherdata, this.udpServerPort, this.serverAddress, (err) => {
             if (err) {
                 this.displayMessage(`メッセージ送信エラー: ${err.message}`);
@@ -260,8 +264,13 @@ class UDPClient {
     receiveMessage() {
         this.sock.on('message', (encryptedData) => {
             const data = this.decryptWithPrivateKey(encryptedData, this.client_privateKey);
-            let dataStr = data.toString('utf-8');
+// <<<<<<< exit_2
+            let leave = false;
+            const dataStr = data.toString('utf-8');
+// =======
+//             let dataStr = data.toString('utf-8');
 
+// >>>>>>> main
             console.log(dataStr)
 
             // JSON形式ならば、解析する
@@ -273,21 +282,53 @@ class UDPClient {
         
             } else if (dataStr === "timeout") {
                 this.displayMessage("タイムアウトしました");
+                leave = true;
                 this.sock.close();
-                // ルーム作成・参加ページへ画面遷移処理
-    
-            } else if (dataStr === "nohost") {
-                this.displayMessage("ホストが退出しました");
-                this.sock.close();
-                // ルーム作成・参加ページへ画面遷移処理
+// <<<<<<< exit_2
 
-            } else {
-                const userNameBytesLen = data.readUInt8(0);
-                const userName = data.slice(1, 1 + userNameBytesLen).toString('utf-8');
-                const messageContent = data.slice(1 + userNameBytesLen).toString('utf-8');
-                this.displayMessage(messageContent, false, userName);
+                setTimeout(() => {
+                    this.exitChatroom();
+                }, 1000);
+            } 
+            else if (dataStr === "nohost") {
+// =======
+//                 // ルーム作成・参加ページへ画面遷移処理
+    
+//             } else if (dataStr === "nohost") {
+// >>>>>>> main
+                this.displayMessage("ホストが退出しました");
+                leave = true;
+                this.sock.close();
+
+                setTimeout(() => {
+                    this.exitChatroom();
+                }, 1000);
+            }
+            else if (dataStr === "leave") {
+                leave = true;
+                this.sock.close();
+
+// <<<<<<< exit_2
+                setTimeout(() => {
+                    this.exitChatroom();
+                }, 1000);
             }
 
+            const userNameBytesLen = data.readUInt8(0);
+            const userName = data.slice(1, 1 + userNameBytesLen).toString('utf-8');
+            const messageContent = data.slice(1 + userNameBytesLen).toString('utf-8');
+            if(!leave){
+                this.displayMessage(`[${userName}] ${messageContent}`);
+            }
+// =======
+//             } else {
+//                 const userNameBytesLen = data.readUInt8(0);
+//                 const userName = data.slice(1, 1 + userNameBytesLen).toString('utf-8');
+//                 const messageContent = data.slice(1 + userNameBytesLen).toString('utf-8');
+//                 this.displayMessage(messageContent, false, userName);
+//             }
+
+// >>>>>>> main
         });
     }
     
@@ -361,42 +402,89 @@ class UDPClient {
         memberModal.show();
     }
 
+// <<<<<<< exit_2
+    exitChatroom(){
+        const connectionMessagesDiv = document.getElementById('connectionMessages');
+        const chatDiv = document.getElementById('chat');
+        const usernameInput = document.getElementById('username');
+        const roomnameInput = document.getElementById('roomname');
+        const passwordInput = document.getElementById('password');
+        const actionSelect = document.getElementById('action');
+
+        // チャット画面を非表示にし、接続画面を表示
+        chatScreen.classList.add('d-none');
+        connectionScreen.classList.remove('d-none');
+        
+        connectionMessagesDiv.innerHTML = '';
+        chatDiv.innerHTML = '';
+
+        // 接続画面の入力フィールドをリセット
+        usernameInput.value = '';
+        roomnameInput.value = '';
+        passwordInput.value = '';
+        actionSelect.selectedIndex = 0;
+    };
+// =======
+// >>>>>>> main
 
     start() {
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendMessage');
+// <<<<<<< exit_2
+        const exitButton = document.getElementById('exitChat');
+// =======
         const showMembersButton = document.getElementById('showMembers');
+// >>>>>>> main
     
         sendButton.addEventListener('click', () => {
             const message = messageInput.value.trim();
             if (message) {
-                this.sendMessage(message);
-                this.displayMessage(` ${message}`, true);
+// <<<<<<< exit_2
+                this.sendMessage(message, '0');
+                this.displayMessage(`[${this.info.user_name}] ${message}`, true);
+// =======
+//                 this.sendMessage(message);
+//                 this.displayMessage(` ${message}`, true);
+// >>>>>>> main
                 messageInput.value = '';
             }
         });
         
+// <<<<<<< exit_2
+        exitButton.addEventListener('click', () => {
+            this.sendMessage('', '1');
+            this.exitChatroom();
+        });
+
+        this.receiveMessage();  
+// =======
         showMembersButton.addEventListener('click', () => {
                 this.sendMessage('getMembers');
         });
 
         this.receiveMessage();
+// >>>>>>> main
     }
 }
 
+const connectionScreen = document.getElementById('connectionScreen');
+const chatScreen = document.getElementById('chatScreen');
 
 document.addEventListener('DOMContentLoaded', () => {
     const connectButton = document.getElementById('connect');
-    const connectionScreen = document.getElementById('connectionScreen');
-    const chatScreen = document.getElementById('chatScreen');
-    const exitButton = document.getElementById('exitChat');
-    const connectionMessagesDiv = document.getElementById('connectionMessages');
-    const chatDiv = document.getElementById('chat');
-    const usernameInput = document.getElementById('username');
-    const roomnameInput = document.getElementById('roomname');
-    const passwordInput = document.getElementById('password');
-    const actionSelect = document.getElementById('action');
-    const textCenter = document.getElementsByClassName('text-center'); // text-center要素の取得
+// <<<<<<< exit_2
+// =======
+//     const connectionScreen = document.getElementById('connectionScreen');
+//     const chatScreen = document.getElementById('chatScreen');
+//     const exitButton = document.getElementById('exitChat');
+//     const connectionMessagesDiv = document.getElementById('connectionMessages');
+//     const chatDiv = document.getElementById('chat');
+//     const usernameInput = document.getElementById('username');
+//     const roomnameInput = document.getElementById('roomname');
+//     const passwordInput = document.getElementById('password');
+//     const actionSelect = document.getElementById('action');
+//     const textCenter = document.getElementsByClassName('text-center'); // text-center要素の取得
+// >>>>>>> main
 
     // 2048ビットのRSA鍵ペアを生成
     const key = new NodeRSA({ b: 2048 });
@@ -429,21 +517,25 @@ document.addEventListener('DOMContentLoaded', () => {
             tcpClient.appendMessage('接続に失敗しました。');
         }
     });
-
-    exitButton.addEventListener('click', () => {
-        // チャット画面を非表示にし、接続画面を表示
-        chatScreen.classList.add('d-none');
-        connectionScreen.classList.remove('d-none');
-        
-        connectionMessagesDiv.innerHTML = '';
-        chatDiv.innerHTML = '';
-
-        // 接続画面の入力フィールドをリセット
-        textCenter[0].innerHTML = "チャットルーム";
-        usernameInput.value = '';
-        roomnameInput.value = '';
-        passwordInput.value = '';
-        actionSelect.selectedIndex = 0;
-    });
-
+// <<<<<<< exit_2
 });
+// =======
+
+//     exitButton.addEventListener('click', () => {
+//         // チャット画面を非表示にし、接続画面を表示
+//         chatScreen.classList.add('d-none');
+//         connectionScreen.classList.remove('d-none');
+        
+//         connectionMessagesDiv.innerHTML = '';
+//         chatDiv.innerHTML = '';
+
+//         // 接続画面の入力フィールドをリセット
+//         textCenter[0].innerHTML = "チャットルーム";
+//         usernameInput.value = '';
+//         roomnameInput.value = '';
+//         passwordInput.value = '';
+//         actionSelect.selectedIndex = 0;
+//     });
+
+// });
+// >>>>>>> main

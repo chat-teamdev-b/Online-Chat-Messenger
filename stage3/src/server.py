@@ -109,18 +109,30 @@ class UDPServer:
             decipher_rsa = PKCS1_OAEP.new(self.server_private_key)
             data = decipher_rsa.decrypt(cipherdata)
 
-            header = data[:2]
+            header = data[:3]
             room_name_size = int.from_bytes(header[:1], "big")
             token_size = int.from_bytes(header[1:2], "big")
+            action_size = int.from_bytes(header[2:3], "big")
 
-            body = data[2:]
+            body = data[3:]
+            offset = 0
             room_name = body[:room_name_size].decode("utf-8")
-            token = body[room_name_size : room_name_size + token_size]
-            message = body[room_name_size + token_size:].decode("utf-8")
+            offset += room_name_size
+            token = body[offset : offset + token_size]
+            offset += token_size
+            action = body[offset : offset + action_size].decode("utf-8")
+            offset += action_size
+            message = body[offset:].decode("utf-8")
 
             user_name = self.chat_rooms_obj.chat_rooms[room_name]['members'][token][0][0]
             user_name_bytes = user_name.encode("utf-8")
             user_name_bytes_len = len(user_name_bytes)
+
+            # 退出ボタンでルーム退出
+            if action == "1":
+                self.leave_room(room_name, token)
+                continue
+
             print(f"[{user_name}] {message}")
 
             # クライアントからの最新メッセージ受信時間を更新
@@ -157,9 +169,15 @@ class UDPServer:
         public_key = RSA.import_key(public_key_data)
         cipher_rsa = PKCS1_OAEP.new(public_key)
         cipherdata = cipher_rsa.encrypt(data)
-        
-        return cipherdata          
 
+        return cipherdata
+    
+    # ボタンからルーム退出した際のクライアント情報の削除
+    def leave_room(self, chat_room, client_token):
+        copy_chat_rooms = copy.deepcopy(self.chat_rooms_obj.chat_rooms)
+        message = "leave".encode("utf-8")
+        self.remove_clients(copy_chat_rooms, chat_room, client_token, message)
+        print(f"クライアント {copy_chat_rooms[chat_room]['members'][client_token][0][1]} がルームを退出しました")
 
     # 非アクティブなクライアントの退出処理
     def remove_inactive_clients(self):
@@ -171,27 +189,28 @@ class UDPServer:
 
                     # クライアントからのメッセージ送信が一定時間されない場合、そのクライアントを退出させる
                     if current_time - copy_chat_rooms[chat_room]['members'][client_token][1] > self.TIMEOUT:
-                        print(f"クライアント {copy_chat_rooms[chat_room]['members'][client_token][0][1]} がタイムアウトしました。")
+                        print(f"クライアント {copy_chat_rooms[chat_room]['members'][client_token][0][1]} がタイムアウトしました")
                         message = "timeout".encode("utf-8")
-
-                        # 削除されたクライアントがホストの場合はチャットルームごと閉じる
-                        if client_token in copy_chat_rooms[chat_room]['host']:
-                            for client_token_sub in copy_chat_rooms[chat_room]['members'].keys():
-                                if client_token_sub != client_token:
-                                    message = "nohost".encode("utf-8")
-                                ciphermessage = self.encrypt(message, chat_room, client_token_sub)
-                                self.sock.sendto(ciphermessage, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
-                            del self.chat_rooms_obj.chat_rooms[chat_room]
-
-                        # それ以外の場合は対象のクライアントのみ退出させる
-                        else:
-                            ciphermessage = self.encrypt(message, chat_room, client_token)
-                            self.sock.sendto(ciphermessage, copy_chat_rooms[chat_room]['members'][client_token][0][1])
-                            del self.chat_rooms_obj.chat_rooms[chat_room]['members'][client_token]
+                        self.remove_clients(copy_chat_rooms, chat_room, client_token, message)
 
             time.sleep(1)
 
+    def remove_clients(self, copy_chat_rooms, chat_room, client_token, message):
+        # 削除されたクライアントがホストの場合はチャットルームごと閉じる
+        if client_token in copy_chat_rooms[chat_room]['host']:
+            for client_token_sub in copy_chat_rooms[chat_room]['members'].keys():
+                if client_token_sub != client_token:
+                    message = "nohost".encode("utf-8")
+                    print(f"ルーム{chat_room}のホストが退出したためクライアント {copy_chat_rooms[chat_room]['members'][client_token][0][1]} がルームを退出しました")
+                ciphermessage = self.encrypt(message, chat_room, client_token_sub)
+                self.sock.sendto(ciphermessage, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
+            del self.chat_rooms_obj.chat_rooms[chat_room]
 
+        # それ以外の場合は対象のクライアントのみ退出させる
+        else:
+            ciphermessage = self.encrypt(message, chat_room, client_token)
+            self.sock.sendto(ciphermessage, copy_chat_rooms[chat_room]['members'][client_token][0][1])
+            del self.chat_rooms_obj.chat_rooms[chat_room]['members'][client_token]
 
 
 
