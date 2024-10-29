@@ -285,7 +285,7 @@ class UDPClient {
                 const userNameBytesLen = data.readUInt8(0);
                 const userName = data.slice(1, 1 + userNameBytesLen).toString('utf-8');
                 const messageContent = data.slice(1 + userNameBytesLen).toString('utf-8');
-                this.displayMessage(`[${userName}] ${messageContent}`);
+                this.displayMessage(messageContent, false, userName);
             }
 
         });
