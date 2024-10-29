@@ -26,7 +26,8 @@
 
         <!-- チャット画面 -->
         <div id="chatScreen" class="chat-container d-flex flex-column vh-100 d-none">
-            <div class="d-flex justify-content-end p-2 border-bottom">
+            <div class="d-flex justify-content-between p-2 border-bottom">
+                <button id="showMembers" class="btn btn-secondary">メンバー一覧</button>
                 <button id="exitChat" class="btn btn-danger">退出</button>
             </div>
             <div id="chat" class="flex-grow-1 border p-2 overflow-auto bg-light"></div>
@@ -35,6 +36,29 @@
                 <button id="sendMessage" class="btn btn-success">送信</button>
             </div>
         </div>
+
+        <!-- メンバーモーダル -->
+        <div class="modal fade" id="memberModal" tabindex="-1" aria-labelledby="memberModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">メンバー</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div id="memberInfo" class="text-center">
+                            
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">閉じる</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+
     </div>
 
     <script src="renderer.js"></script>
