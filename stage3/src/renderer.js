@@ -264,19 +264,38 @@ class UDPClient {
     receiveMessage() {
         this.sock.on('message', (encryptedData) => {
             const data = this.decryptWithPrivateKey(encryptedData, this.client_privateKey);
+// <<<<<<< exit_2
             let leave = false;
             const dataStr = data.toString('utf-8');
+// =======
+//             let dataStr = data.toString('utf-8');
+
+// >>>>>>> main
             console.log(dataStr)
-            if (dataStr === "timeout") {
+
+            // JSON形式ならば、解析する
+            if (this.isJSON(dataStr)){
+                dataStr = JSON.parse(dataStr);
+                if (dataStr.hasOwnProperty('type') && dataStr.type === 'members') {
+                    this.showMemberNamesInModal(dataStr.data)
+                }
+        
+            } else if (dataStr === "timeout") {
                 this.displayMessage("タイムアウトしました");
                 leave = true;
                 this.sock.close();
+// <<<<<<< exit_2
 
                 setTimeout(() => {
                     this.exitChatroom();
                 }, 1000);
             } 
             else if (dataStr === "nohost") {
+// =======
+//                 // ルーム作成・参加ページへ画面遷移処理
+    
+//             } else if (dataStr === "nohost") {
+// >>>>>>> main
                 this.displayMessage("ホストが退出しました");
                 leave = true;
                 this.sock.close();
@@ -289,6 +308,7 @@ class UDPClient {
                 leave = true;
                 this.sock.close();
 
+// <<<<<<< exit_2
                 setTimeout(() => {
                     this.exitChatroom();
                 }, 1000);
@@ -300,7 +320,27 @@ class UDPClient {
             if(!leave){
                 this.displayMessage(`[${userName}] ${messageContent}`);
             }
+// =======
+//             } else {
+//                 const userNameBytesLen = data.readUInt8(0);
+//                 const userName = data.slice(1, 1 + userNameBytesLen).toString('utf-8');
+//                 const messageContent = data.slice(1 + userNameBytesLen).toString('utf-8');
+//                 this.displayMessage(messageContent, false, userName);
+//             }
+
+// >>>>>>> main
         });
+    }
+    
+
+    // JSON形式か判定
+    isJSON(data) {
+        try {
+            JSON.parse(data);
+        } catch (e) {
+            return false;
+        }
+        return true;
     }
 
     // 復号関数
@@ -319,23 +359,50 @@ class UDPClient {
         return decryptedData;
     }
 
-    displayMessage(message, isSent = false) {
+    displayMessage(message, isSent = false, userName = null) {
         const chatDiv = document.getElementById('chat');
+        const messageWrapper = document.createElement('div');
+        const userElement = document.createElement('div');
         const messageElement = document.createElement('div');
+        
+        userElement.textContent = isSent ? this.info.user_name : userName;  
         messageElement.textContent = message;
-
-        // 送信されたメッセージを右寄せし、背景色を設定
+        
+        messageWrapper.classList.add('message-wrapper');
+        userElement.classList.add('message-user');
+        messageElement.classList.add('message');
+        
         if (isSent) {
+            messageWrapper.classList.add('sent-message-wrapper');
             messageElement.classList.add('sent-message');
         } else {
-            // 受信メッセージの背景色を設定
+            messageWrapper.classList.add('received-message-wrapper');
             messageElement.classList.add('received-message');
         }
-
-        chatDiv.appendChild(messageElement);
-        chatDiv.scrollTop = chatDiv.scrollHeight; // 最新メッセージにスクロール
+        
+        messageWrapper.appendChild(userElement);
+        messageWrapper.appendChild(messageElement);
+        chatDiv.appendChild(messageWrapper);
+        chatDiv.scrollTop = chatDiv.scrollHeight; 
     }
 
+    showMemberNamesInModal(memberNames) {
+        // モーダルにメンバーの名前を表示
+        const memberInfoDiv = document.getElementById('memberInfo');
+        memberInfoDiv.innerHTML = ''; 
+    
+        memberNames.forEach(name => {
+            const memberElement = document.createElement('p');
+            memberElement.textContent = `${name}`;
+            memberInfoDiv.appendChild(memberElement);
+        });
+    
+        // モーダルを表示
+        const memberModal = new bootstrap.Modal(document.getElementById('memberModal'));
+        memberModal.show();
+    }
+
+// <<<<<<< exit_2
     exitChatroom(){
         const connectionMessagesDiv = document.getElementById('connectionMessages');
         const chatDiv = document.getElementById('chat');
@@ -357,27 +424,46 @@ class UDPClient {
         passwordInput.value = '';
         actionSelect.selectedIndex = 0;
     };
+// =======
+// >>>>>>> main
 
     start() {
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendMessage');
+// <<<<<<< exit_2
         const exitButton = document.getElementById('exitChat');
+// =======
+        const showMembersButton = document.getElementById('showMembers');
+// >>>>>>> main
     
         sendButton.addEventListener('click', () => {
             const message = messageInput.value.trim();
             if (message) {
+// <<<<<<< exit_2
                 this.sendMessage(message, '0');
                 this.displayMessage(`[${this.info.user_name}] ${message}`, true);
+// =======
+//                 this.sendMessage(message);
+//                 this.displayMessage(` ${message}`, true);
+// >>>>>>> main
                 messageInput.value = '';
             }
         });
         
+// <<<<<<< exit_2
         exitButton.addEventListener('click', () => {
             this.sendMessage('', '1');
             this.exitChatroom();
         });
 
         this.receiveMessage();  
+// =======
+        showMembersButton.addEventListener('click', () => {
+                this.sendMessage('getMembers');
+        });
+
+        this.receiveMessage();
+// >>>>>>> main
     }
 }
 
@@ -386,6 +472,19 @@ const chatScreen = document.getElementById('chatScreen');
 
 document.addEventListener('DOMContentLoaded', () => {
     const connectButton = document.getElementById('connect');
+// <<<<<<< exit_2
+// =======
+//     const connectionScreen = document.getElementById('connectionScreen');
+//     const chatScreen = document.getElementById('chatScreen');
+//     const exitButton = document.getElementById('exitChat');
+//     const connectionMessagesDiv = document.getElementById('connectionMessages');
+//     const chatDiv = document.getElementById('chat');
+//     const usernameInput = document.getElementById('username');
+//     const roomnameInput = document.getElementById('roomname');
+//     const passwordInput = document.getElementById('password');
+//     const actionSelect = document.getElementById('action');
+//     const textCenter = document.getElementsByClassName('text-center'); // text-center要素の取得
+// >>>>>>> main
 
     // 2048ビットのRSA鍵ペアを生成
     const key = new NodeRSA({ b: 2048 });
@@ -405,6 +504,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 udpClient.displayMessage('UDP接続が開始されました。');
                 udpClient.start();
 
+                // text-centerの内容をroomnameに書き換える
+                textCenter[0].innerHTML = roomnameInput.value;
+
+
                 // 接続画面を非表示にし、チャット画面を表示
                 connectionScreen.classList.add('d-none');
                 chatScreen.classList.remove('d-none');
@@ -414,4 +517,25 @@ document.addEventListener('DOMContentLoaded', () => {
             tcpClient.appendMessage('接続に失敗しました。');
         }
     });
+// <<<<<<< exit_2
 });
+// =======
+
+//     exitButton.addEventListener('click', () => {
+//         // チャット画面を非表示にし、接続画面を表示
+//         chatScreen.classList.add('d-none');
+//         connectionScreen.classList.remove('d-none');
+        
+//         connectionMessagesDiv.innerHTML = '';
+//         chatDiv.innerHTML = '';
+
+//         // 接続画面の入力フィールドをリセット
+//         textCenter[0].innerHTML = "チャットルーム";
+//         usernameInput.value = '';
+//         roomnameInput.value = '';
+//         passwordInput.value = '';
+//         actionSelect.selectedIndex = 0;
+//     });
+
+// });
+// >>>>>>> main
