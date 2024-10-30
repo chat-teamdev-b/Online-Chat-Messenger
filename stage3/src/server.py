@@ -97,7 +97,7 @@ class UDPServer:
         self.server_port = server_port
         self.chat_rooms_obj = chat_rooms_obj
         self.server_private_key = server_private_key
-        self.TIMEOUT = 30
+        self.TIMEOUT = 300
         self.sock.bind((server_address, server_port))
     
     # クライアントからのメッセージを受信し、同じルーム内の全てのクライアントへ転送
