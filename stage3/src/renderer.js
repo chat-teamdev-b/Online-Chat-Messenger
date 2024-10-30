@@ -217,7 +217,7 @@ class UDPClient {
         this.info = info;
         this.client_privateKey = client_privateKey;
         this.sock.bind(info.client_address_port);
-        this.displayMessage(`${this.info.user_name}がルームに参加しました`, undefined, undefined, true);
+        this.displayMessage(`${this.info.user_name} がルームに参加しました`, undefined, undefined, true);
         this.sendMessage(`entry_or_exit`, '0');
     }
 
@@ -265,6 +265,8 @@ class UDPClient {
         this.sock.on('message', (encryptedData) => {
             const data = this.decryptWithPrivateKey(encryptedData, this.client_privateKey);
             let dataStr = data.toString('utf-8');
+            console.log(dataStr);
+            console.log(dataStr.substring(0, 12));
 
             // JSON形式ならば、解析する
             if (this.isJSON(dataStr)){
@@ -296,12 +298,18 @@ class UDPClient {
                     this.exitChatroom();
                 }, 1000);
             }
+            else if (dataStr.substring(0, 14) === "member_timeout") {
+                this.displayMessage(`${dataStr.substring(14)} がタイムアウトしました`, undefined, undefined, true);
+            }
+            else if (dataStr.substring(0, 12) === "member_leave") {
+                this.displayMessage(`${dataStr.substring(12)} がルームを退出しました`, undefined, undefined, true);
+            }
             else {
                 const userNameBytesLen = data.readUInt8(0);
                 const userName = data.slice(1, 1 + userNameBytesLen).toString('utf-8');
                 let messageContent = data.slice(1 + userNameBytesLen).toString('utf-8');
                 if (messageContent === "entry_or_exit") {
-                    messageContent = `${userName}がルームに参加しました`;
+                    messageContent = `${userName} がルームに参加しました`;
                     this.displayMessage(messageContent, undefined, undefined, true);
                 }
                 else {
