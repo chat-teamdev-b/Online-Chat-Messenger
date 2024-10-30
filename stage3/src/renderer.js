@@ -277,7 +277,6 @@ class UDPClient {
                 leave = true;
                 this.sock.close();
 
-
                 setTimeout(() => {
                     this.exitChatroom();
                 }, 1000);
@@ -294,7 +293,6 @@ class UDPClient {
             else if (dataStr === "leave") {
                 leave = true;
                 this.sock.close();
-
 
                 setTimeout(() => {
                     this.exitChatroom();
