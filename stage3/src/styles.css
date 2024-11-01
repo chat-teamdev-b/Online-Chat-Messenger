@@ -1,7 +1,9 @@
+
 body, html {
   height: 100%;
   margin: 0;
 }
+
 
 .chat-container {
   height: 100vh;
@@ -9,12 +11,14 @@ body, html {
   flex-direction: column;
 }
 
+
 #chat {
   display:flex;
   flex-direction: column ;
   overflow-y: auto;
   background-color: #f8f9fa;
 }
+
 
 .message-wrapper {
   display: flex;
@@ -26,17 +30,27 @@ body, html {
   word-wrap: break-word;
 }
 
+
 .message-user {
   font-size: 0.9em;
   font-weight: bold;
   margin-bottom: 3px;
 }
 
+
+#sendMessage {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+
 /* 自分のメッセージ（右寄せ） */
 .sent-message-wrapper {
   align-self: flex-end;
   text-align: right;
 }
+
 
 .sent-message {
   background-color: #007bff;
@@ -49,10 +63,12 @@ body, html {
   margin-left: auto; /* Add this line to align the sent message to the right */
 }
 
+
 /* 受信メッセージ（左寄せ） */
 .received-message-wrapper {
   align-self: flex-start;
 }
+
 
 .received-message {
   background-color: #f1f0f0;
@@ -65,12 +81,14 @@ body, html {
   margin-right: auto; /* Add this line to align the received message to the left */
 }
 
+
 .input-group {
   display: flex;
   background-color: #fff;
   border-top: 1px solid #ccc;
   padding: 10px;
 }
+
 
 .input-group .form-control {
   flex: 1;
