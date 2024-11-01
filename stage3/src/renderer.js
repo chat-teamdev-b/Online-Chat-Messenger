@@ -397,6 +397,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = document.getElementById('password');
     const actionSelect = document.getElementById('action');
     const textCenter = document.getElementsByClassName('text-center'); // text-center要素の取得
+    const messageInput = document.getElementById('messageInput');
 
     // 2048ビットのRSA鍵ペアを生成
     const key = new NodeRSA({ b: 2048 });
@@ -444,6 +445,9 @@ document.addEventListener('DOMContentLoaded', () => {
         roomnameInput.value = '';
         passwordInput.value = '';
         actionSelect.selectedIndex = 0;
+
+        // チャット画面の入力フィールドをリセット
+        messageInput.value = '';
     });
 
 });

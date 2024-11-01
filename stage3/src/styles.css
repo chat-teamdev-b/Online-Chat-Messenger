@@ -16,6 +16,10 @@ body, html {
   background-color: #f8f9fa;
 }
 
+.message {
+  white-space: pre-line;
+}
+
 .message-wrapper {
   display: flex;
   flex-direction: column;
@@ -35,7 +39,6 @@ body, html {
 /* 自分のメッセージ（右寄せ） */
 .sent-message-wrapper {
   align-self: flex-end;
-  text-align: right;
 }
 
 .sent-message {
