@@ -494,4 +494,24 @@ document.addEventListener('DOMContentLoaded', () => {
             tcpClient.appendMessage('接続に失敗しました。');
         }
     });
+
+    exitButton.addEventListener('click', () => {
+        // チャット画面を非表示にし、接続画面を表示
+        chatScreen.classList.add('d-none');
+        connectionScreen.classList.remove('d-none');
+        
+        connectionMessagesDiv.innerHTML = '';
+        chatDiv.innerHTML = '';
+
+        // 接続画面の入力フィールドをリセット
+        textCenter[0].innerHTML = "チャットルーム";
+        usernameInput.value = '';
+        roomnameInput.value = '';
+        passwordInput.value = '';
+        actionSelect.selectedIndex = 0;
+
+        // チャット画面の入力フィールドをリセット
+        messageInput.value = '';
+    });
+
 });
