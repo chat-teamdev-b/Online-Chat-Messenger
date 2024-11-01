@@ -217,6 +217,8 @@ class UDPClient {
         this.info = info;
         this.client_privateKey = client_privateKey;
         this.sock.bind(info.client_address_port);
+        this.displayMessage(`${this.info.user_name} がルームに参加しました`, undefined, undefined, true);
+        this.sendMessage(`entry_or_exit`, '0');
     }
 
     protocolHeader(roomNameBytesLen, tokenBytesLen, actionByteLen) {
@@ -262,8 +264,9 @@ class UDPClient {
     receiveMessage() {
         this.sock.on('message', (encryptedData) => {
             const data = this.decryptWithPrivateKey(encryptedData, this.client_privateKey);
-            let leave = false;
             let dataStr = data.toString('utf-8');
+            console.log(dataStr);
+            console.log(dataStr.substring(0, 12));
 
             // JSON形式ならば、解析する
             if (this.isJSON(dataStr)){
@@ -273,8 +276,7 @@ class UDPClient {
                 }
         
             } else if (dataStr === "timeout") {
-                this.displayMessage("タイムアウトしました");
-                leave = true;
+                this.displayMessage("タイムアウトしました", undefined, undefined, true);
                 this.sock.close();
 
                 setTimeout(() => {
@@ -282,8 +284,7 @@ class UDPClient {
                 }, 1000);
             } 
             else if (dataStr === "nohost") {
-                this.displayMessage("ホストが退出しました");
-                leave = true;
+                this.displayMessage("ホストが退出したためルームが閉じられます", undefined, undefined, true);
                 this.sock.close();
 
                 setTimeout(() => {
@@ -291,21 +292,30 @@ class UDPClient {
                 }, 1000);
             }
             else if (dataStr === "leave") {
-                leave = true;
                 this.sock.close();
 
                 setTimeout(() => {
                     this.exitChatroom();
                 }, 1000);
             }
+            else if (dataStr.substring(0, 14) === "member_timeout") {
+                this.displayMessage(`${dataStr.substring(14)} がタイムアウトしました`, undefined, undefined, true);
+            }
+            else if (dataStr.substring(0, 12) === "member_leave") {
+                this.displayMessage(`${dataStr.substring(12)} がルームを退出しました`, undefined, undefined, true);
+            }
             else {
                 const userNameBytesLen = data.readUInt8(0);
                 const userName = data.slice(1, 1 + userNameBytesLen).toString('utf-8');
-                const messageContent = data.slice(1 + userNameBytesLen).toString('utf-8');
-                this.displayMessage(messageContent, false, userName);
+                let messageContent = data.slice(1 + userNameBytesLen).toString('utf-8');
+                if (messageContent === "entry_or_exit") {
+                    messageContent = `${userName} がルームに参加しました`;
+                    this.displayMessage(messageContent, undefined, undefined, true);
+                }
+                else {
+                    this.displayMessage(messageContent, false, userName);
+                }
             }
-
-
         });
     }
 
@@ -335,7 +345,7 @@ class UDPClient {
         return decryptedData;
     }
 
-    displayMessage(message, isSent = false, userName = null) {
+    displayMessage(message, isSent = false, userName = null, isInOut = false) {
         const chatDiv = document.getElementById('chat');
         const messageWrapper = document.createElement('div');
         const userElement = document.createElement('div');
@@ -348,12 +358,18 @@ class UDPClient {
         userElement.classList.add('message-user');
         messageElement.classList.add('message');
         
-        if (isSent) {
+        if (isSent && !isInOut) {
             messageWrapper.classList.add('sent-message-wrapper');
             messageElement.classList.add('sent-message');
-        } else {
+        }
+        else if (!isSent && !isInOut) {
             messageWrapper.classList.add('received-message-wrapper');
             messageElement.classList.add('received-message');
+        }
+        else {
+            // 中央にメッセージを表示させる
+            messageWrapper.classList.add('entry-exit-wrapper');
+            messageElement.classList.add('entry-exit');
         }
         
         messageWrapper.appendChild(userElement);
@@ -460,7 +476,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if ("token" in tcpClient.info) {
                 const udpClient = new UDPClient('0.0.0.0', 9002, tcpClient.info, client_privateKey);
-                udpClient.displayMessage('UDP接続が開始されました。');
                 udpClient.start();
 
                 // text-centerの内容をroomnameに書き換える
