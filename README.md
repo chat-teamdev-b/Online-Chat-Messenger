@@ -2,6 +2,8 @@
 
 # 概要
 このアプリケーションでは、ユーザーはチャットルームを作成したり、既存のルームに参加したりして、他のユーザーとリアルタイムでコミュニケーションを取ることができます。通信はTCPとUDPプロトコルを使用し、RSA暗号化によりデータの安全なやり取りを実現しています。
+| ![screen1](images/screen1.png) | ![screen2](images/screen2.png) |
+|:---:|:---:|
 
 ## 機能
 - **チャットルームの作成または参加:** 新しいチャットルームを作成するか、既存のルームに参加できます。
@@ -16,7 +18,13 @@
 - [ソケットプログラミング](https://docs.python.org/3/library/socket.html): TCPおよびUDPソケットによるネットワーク通信
 - [RSA暗号化](https://cryptography.io/en/latest/hazmat/primitives/asymmetric/rsa/): メッセージのセキュリティを保つための公開鍵・秘密鍵暗号化
 
-## アプリケーションの実行方法
+## 必要条件
+- Node.js
+- Python 3.x
+- Python 用の RSA暗号化ライブラリ `pycryptodome` （`pip install pycryptodome` でインストール可能）
+- NodeJS のための RSA暗号化ライブラリ `node-rsa` (`npm install node-rsa` でインストール可能)
+
+## アプリケーション実行方法
 
 1. このリポジトリをクローンします:
     ```bash
@@ -28,18 +36,18 @@
     cd Online-Chat-Messenger
     npm init -y
     npm install -D electron
+    pip install pycryptodome
+    npm install node-rsa
     ```
 
 3. サーバーを起動します:
     ```bash
-    cd stage3/src
-    python3 server.py
+    python3 stage3/src/server.py
     ```
 
 4. Electronアプリケーションを起動します:
     ```bash
-    cd stage3/src
-    npx electron .
+    npx stage3/src/electron .
     ```
 
 ## 使用方法
@@ -70,14 +78,8 @@
         └── styles.css
 </pre>
 
-## 必要条件
-- Node.js
-- Python 3.x
-- Python 用の RSA暗号化ライブラリ `pycryptodome` （`pip install pycryptodome` でインストール可能）
-- NodeJS のための RSA暗号化ライブラリ `node-rsa` (`npm install node-rsa` でインストール可能)
-
 # 注意事項
 サーバーおよびクライアントは同じネットワーク内で動作する必要があります。  
 サーバーのIPアドレスとポート番号は、環境に合わせて適宜変更してください。
-  
-以上が基本的な使い方とクラスの説明になります。詳細な実装は各ファイルのソースコードを参照してください。
+
+詳細な実装は各ファイルのソースコードを参照してください。
