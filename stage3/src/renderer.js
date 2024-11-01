@@ -459,8 +459,6 @@ const chatScreen = document.getElementById('chatScreen');
 document.addEventListener('DOMContentLoaded', () => {
     const connectButton = document.getElementById('connect');
     const roomnameInput = document.getElementById('roomname');
-    const passwordInput = document.getElementById('password');
-    const actionSelect = document.getElementById('action');
     const textCenter = document.getElementsByClassName('text-center'); // text-center要素の取得
     const messageInput = document.getElementById('messageInput');
 
@@ -484,6 +482,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 // text-centerの内容をroomnameに書き換える
                 textCenter[0].innerHTML = roomnameInput.value;
 
+                // チャット画面の入力フィールドをリセット
+                messageInput.value = '';
+
                 // 接続画面を非表示にし、チャット画面を表示
                 connectionScreen.classList.add('d-none');
                 chatScreen.classList.remove('d-none');
@@ -493,24 +494,4 @@ document.addEventListener('DOMContentLoaded', () => {
             tcpClient.appendMessage('接続に失敗しました。');
         }
     });
-
-    exitButton.addEventListener('click', () => {
-        // チャット画面を非表示にし、接続画面を表示
-        chatScreen.classList.add('d-none');
-        connectionScreen.classList.remove('d-none');
-        
-        connectionMessagesDiv.innerHTML = '';
-        chatDiv.innerHTML = '';
-
-        // 接続画面の入力フィールドをリセット
-        textCenter[0].innerHTML = "チャットルーム";
-        usernameInput.value = '';
-        roomnameInput.value = '';
-        passwordInput.value = '';
-        actionSelect.selectedIndex = 0;
-
-        // チャット画面の入力フィールドをリセット
-        messageInput.value = '';
-    });
-
 });
