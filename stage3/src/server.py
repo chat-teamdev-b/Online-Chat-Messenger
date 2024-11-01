@@ -97,7 +97,7 @@ class UDPServer:
         self.server_port = server_port
         self.chat_rooms_obj = chat_rooms_obj
         self.server_private_key = server_private_key
-        self.TIMEOUT = 300
+        self.TIMEOUT = 30
         self.sock.bind((server_address, server_port))
     
     # クライアントからのメッセージを受信し、同じルーム内の全てのクライアントへ転送
@@ -197,11 +197,14 @@ class UDPServer:
 
     def remove_clients(self, copy_chat_rooms, chat_room, client_token, message):
         # 削除されたクライアントがホストの場合はチャットルームごと閉じる
+        tmp = message
         if client_token in copy_chat_rooms[chat_room]['host']:
             for client_token_sub in copy_chat_rooms[chat_room]['members'].keys():
                 if client_token_sub != client_token:
                     message = "nohost"
                     print(f"ルーム{chat_room}のホストが退出したためクライアント {copy_chat_rooms[chat_room]['members'][client_token][0][1]} がルームを退出しました")
+                else:
+                    message = tmp
                 message = message.encode("utf-8")
                 ciphermessage = self.encrypt(message, chat_room, client_token_sub)
                 self.sock.sendto(ciphermessage, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
@@ -209,11 +212,14 @@ class UDPServer:
 
         # それ以外の場合は対象のクライアントのみ退出させる
         else:
+            tmp = message
             for client_token_sub in copy_chat_rooms[chat_room]['members'].keys():
                 if client_token_sub != client_token:
                     message = "member_" + message + copy_chat_rooms[chat_room]['members'][client_token][0][0]
                     print(message)
                     message = message.encode("utf-8")
+                else:
+                    message = tmp.encode("utf-8")
                 ciphermessage = self.encrypt(message, chat_room, client_token_sub)
                 self.sock.sendto(ciphermessage, copy_chat_rooms[chat_room]['members'][client_token_sub][0][1])
             del self.chat_rooms_obj.chat_rooms[chat_room]['members'][client_token]
