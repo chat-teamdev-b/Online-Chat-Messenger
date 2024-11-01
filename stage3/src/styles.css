@@ -1,13 +1,16 @@
+
 body, html {
   height: 100%;
   margin: 0;
 }
+
 
 .chat-container {
   height: 100vh;
   display: flex;
   flex-direction: column;
 }
+
 
 #chat {
   display:flex;
@@ -20,6 +23,7 @@ body, html {
   white-space: pre-line;
 }
 
+
 .message-wrapper {
   display: flex;
   flex-direction: column;
@@ -30,16 +34,26 @@ body, html {
   word-wrap: break-word;
 }
 
+
 .message-user {
   font-size: 0.9em;
   font-weight: bold;
   margin-bottom: 3px;
 }
 
+
+#sendMessage {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+}
+
+
 /* 自分のメッセージ（右寄せ） */
 .sent-message-wrapper {
   align-self: flex-end;
 }
+
 
 .sent-message {
   background-color: #007bff;
@@ -52,10 +66,12 @@ body, html {
   margin-left: auto;
 }
 
+
 /* 受信メッセージ（左寄せ） */
 .received-message-wrapper {
   align-self: flex-start;
 }
+
 
 .received-message {
   background-color: #236f92bd;
@@ -83,12 +99,14 @@ body, html {
   margin-right: auto;
 }
 
+
 .input-group {
   display: flex;
   background-color: #fff;
   border-top: 1px solid #ccc;
   padding: 10px;
 }
+
 
 .input-group .form-control {
   flex: 1;
