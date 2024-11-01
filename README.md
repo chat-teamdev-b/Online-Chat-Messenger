@@ -2,8 +2,11 @@
 
 # 概要
 このアプリケーションでは、ユーザーはチャットルームを作成したり、既存のルームに参加したりして、他のユーザーとリアルタイムでコミュニケーションを取ることができます。通信はTCPとUDPプロトコルを使用し、RSA暗号化によりデータの安全なやり取りを実現しています。
-| ![screen1](images/screen1.png) | ![screen2](images/screen2.png) |
+| ![screen1](images/Screen1.png) | ![screen2](images/Screen2.png) |
 |:---:|:---:|
+| ![screen3](images/Screen3.png) | ![screen4](images/Screen4.png) |
+|:---:|:---:|
+
 
 ## 機能
 - **チャットルームの作成または参加:** 新しいチャットルームを作成するか、既存のルームに参加できます。
@@ -63,10 +66,21 @@
 3. **メッセージの送信:**
    - ルームに接続後、メッセージ入力欄にメッセージを入力し、「送信」をクリックします。
 
+## インフラ構成図
+| ![chart](images/chart.png) |
+|:---:|
+
 ## ディレクトリ構成
 <pre>
 .
+
 ├── README.md
+├── images
+    ├── chart.png
+    ├── screen1.png
+    ├── screen2.png
+    ├── screen3.png
+    ├── screen4.png
 └── stage3
     └── src
         ├── index.html
@@ -74,6 +88,7 @@
         ├── package.json
         ├── preload.js
         ├── renderer.js
+        ├── renderer.png
         ├── server.py
         └── styles.css
 </pre>
