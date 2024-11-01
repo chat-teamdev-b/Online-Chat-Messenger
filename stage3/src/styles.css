@@ -19,6 +19,10 @@ body, html {
   background-color: #f8f9fa;
 }
 
+.message {
+  white-space: pre-line;
+}
+
 
 .message-wrapper {
   display: flex;
@@ -48,7 +52,6 @@ body, html {
 /* 自分のメッセージ（右寄せ） */
 .sent-message-wrapper {
   align-self: flex-end;
-  text-align: right;
 }
 
 
@@ -60,7 +63,7 @@ body, html {
   border-bottom-right-radius: 0;
   max-width: 100%;
   box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
-  margin-left: auto; /* Add this line to align the sent message to the right */
+  margin-left: auto;
 }
 
 
@@ -71,14 +74,29 @@ body, html {
 
 
 .received-message {
-  background-color: #f1f0f0;
-  color: black;
+  background-color: #236f92bd;
+  color: white;
   padding: 10px 15px;
   border-radius: 15px;
   border-bottom-left-radius: 0;
   max-width: 100%;
   box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
-  margin-right: auto; /* Add this line to align the received message to the left */
+  margin-right: auto;
+}
+
+/* 入退室メッセージ */
+.entry-exit-wrapper {
+  align-self: center;
+}
+
+.entry-exit {
+  background-color: #f1f0f0;
+  color: black;
+  padding: 10px 15px;
+  border-radius: 15px;
+  max-width: 100%;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2);
+  margin-right: auto;
 }
 
 
