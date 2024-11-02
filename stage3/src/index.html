@@ -9,11 +9,11 @@
 </head>
 <body>
     <div class="container d-flex flex-column vh-100">
-        <h1 class="text-center">Online Chat Messenger</h1>
+        <h1 class="text-center mt-3">Online Chat Messenger</h1>
 
 
         <!-- 接続画面 -->
-        <div id="connectionScreen" class="mb-3">
+        <div id="connectionScreen" class="mb-3 d-flex flex-column vh-100 overflow-hidden">
             <input type="text" id="username" class="form-control" placeholder="ユーザー名を入力">
             <select id="action" class="form-select mt-3">
                 <option value="create">ルームを作成</option>
@@ -22,19 +22,18 @@
             <input type="text" id="roomname" class="form-control mt-3" placeholder="ルーム名を入力">
             <input type="password" id="password" class="form-control mt-3" placeholder="パスワード（任意）">
             <button id="connect" class="btn btn-primary w-100 mt-3">接続</button>
-            <div id="connectionMessages" class="mt-3"></div>
+            <div id="connectionMessages" class="mt-3 d-flex flex-column flex-grow-1 overflow-auto"></div>
         </div>
 
 
         <!-- チャット画面 -->
-        <div id="chatScreen" class="chat-container d-flex flex-column vh-100 d-none">
+        <div id="chatScreen" class="chat-container d-flex flex-column vh-100 d-none overflow-hidden">
             <div class="d-flex justify-content-between p-2 border-bottom">
                 <button id="showMembers" class="btn btn-secondary">メンバーリスト</button>
-
                 <button id="exitChat" class="btn btn-danger">退出</button>
             </div>
-            <div id="chat" class="flex-grow-1 border p-2 overflow-auto bg-light"></div>
-            <div class="input-group mt-auto">
+            <div id="chat" class="d-flex flex-column flex-grow-1 border p-2 overflow-auto bg-light"></div>
+            <div class="input-group d-flex mt-auto">
                 <textarea id="messageInput" class="form-control" placeholder="メッセージを入力" rows=1"></textarea>
                 <input type="image" src="send_icon.png" alt="送信" class="btn-primary" id="sendMessage"></input>
             </div>
@@ -54,7 +53,6 @@
                             
                         </div>
                     </div>
-                   
                 </div>
             </div>
         </div>
