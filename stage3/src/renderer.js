@@ -421,24 +421,20 @@ class UDPClient {
     start() {
         const messageInput = document.getElementById('messageInput');
         const sendButton = document.getElementById('sendMessage');
-
         const exitButton = document.getElementById('exitChat');
-
         const showMembersButton = document.getElementById('showMembers');
-
     
         sendButton.addEventListener('click', () => {
             const message = messageInput.value.trim();
             if (message) {
 
                 this.sendMessage(message, '0');
-                this.displayMessage(` ${message}`, true);
+                this.displayMessage(`${message}`, true);
 
                 messageInput.value = '';
             }
         });
         
-
         exitButton.addEventListener('click', () => {
             this.sendMessage('', '1');
             this.exitChatroom();
@@ -449,7 +445,6 @@ class UDPClient {
         });
 
         this.receiveMessage();
-
     }
 }
 

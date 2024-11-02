@@ -4,21 +4,13 @@ body, html {
   margin: 0;
 }
 
-
-.chat-container {
-  overflow: hidden;
-}
-
-
 #chat {
-  display:flex;
-  flex-direction: column ;
-  overflow-y: auto;
   background-color: #f8f9fa;
 }
 
 .message {
-  white-space: pre-line;
+  white-space: pre-wrap;
+  word-wrap: break-word;
 }
 
 
@@ -29,7 +21,6 @@ body, html {
   margin-bottom: 10px;
   border-radius: 15px;
   margin-bottom: 5px;
-  word-wrap: break-word;
 }
 
 
@@ -44,6 +35,7 @@ body, html {
   width: 40px;
   height: 40px;
   border-radius: 10px;
+  margin-left: 10px;
 }
 
 
@@ -99,7 +91,6 @@ body, html {
 
 
 .input-group {
-  display: flex;
   background-color: #fff;
   border-top: 1px solid #ccc;
   padding: 10px;
