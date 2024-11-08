@@ -120,9 +120,9 @@ class TCPClient {
         const operation = document.getElementById('action').value === 'create' ? 1 : 2;
         console.log(operation);
 
-        const roomname = document.getElementById('roomname').value;
-        this.info['room_name'] = roomname;
-        const roomNameBytes = Buffer.from(roomname, 'utf-8');
+        const roomName = document.getElementById('roomname').value;
+        this.info['room_name'] = roomName;
+        const roomNameBytes = Buffer.from(roomName, 'utf-8');
         const roomNameBytesSize = roomNameBytes.length;
 
         const password = document.getElementById('password').value;
@@ -467,26 +467,38 @@ document.addEventListener('DOMContentLoaded', () => {
     const tcpClient = new TCPClient('0.0.0.0', 9001, client_publicKey);
 
     connectButton.addEventListener('click', async () => {
-        try {
-            await tcpClient.connect(); 
+        const userName = document.getElementById('username').value.trim();
+        const roomname = document.getElementById('roomname').value.trim();
 
-            if ("token" in tcpClient.info) {
-                const udpClient = new UDPClient('0.0.0.0', 9002, tcpClient.info, client_privateKey);
-                udpClient.start();
-
-                // text-centerの内容をroomnameに書き換える
-                textCenter[0].innerHTML = roomnameInput.value;
-
-                // チャット画面の入力フィールドをリセット
-                messageInput.value = '';
-
-                // 接続画面を非表示にし、チャット画面を表示
-                connectionScreen.classList.add('d-none');
-                chatScreen.classList.remove('d-none');
+        if (userName == "" && roomname == ""){
+            alert("ユーザー名とルーム名を入力してください");
+        } else if (userName == ""){
+            alert("ユーザー名を入力してください");
+        } else if (roomname == ""){
+            alert("ルーム名を入力してください");
+        }else{
+            try {
+                await tcpClient.connect(); 
+    
+                if ("token" in tcpClient.info) {
+                    const udpClient = new UDPClient('0.0.0.0', 9002, tcpClient.info, client_privateKey);
+                    udpClient.start();
+    
+                    // text-centerの内容をroomnameに書き換える
+                    textCenter[0].innerHTML = roomnameInput.value;
+    
+                    // チャット画面の入力フィールドをリセット
+                    messageInput.value = '';
+    
+                    // 接続画面を非表示にし、チャット画面を表示
+                    connectionScreen.classList.add('d-none');
+                    chatScreen.classList.remove('d-none');
+                }
+            } catch (error) {
+                console.error('接続に失敗しました:', error);
+                tcpClient.appendMessage('接続に失敗しました。');
             }
-        } catch (error) {
-            console.error('接続に失敗しました:', error);
-            tcpClient.appendMessage('接続に失敗しました。');
         }
+
     });
 });
