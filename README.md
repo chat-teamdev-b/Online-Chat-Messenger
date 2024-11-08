@@ -86,7 +86,6 @@
         ├── index.html
         ├── main.js
         ├── package.json
-        ├── preload.js
         ├── renderer.js
         ├── renderer.png
         ├── server.py
