@@ -476,7 +476,7 @@ document.addEventListener('DOMContentLoaded', () => {
             alert("ユーザー名を入力してください");
         } else if (roomname == ""){
             alert("ルーム名を入力してください");
-        }else{
+        }else {
             try {
                 await tcpClient.connect(); 
     
