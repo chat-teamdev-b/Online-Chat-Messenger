@@ -77,17 +77,17 @@
 ├── README.md
 ├── images
     ├── chart.png
-    ├── screen1.png
-    ├── screen2.png
-    ├── screen3.png
-    ├── screen4.png
+    ├── Screen1.png
+    ├── Screen2.png
+    ├── Screen3.png
+    ├── Screen4.png
 └── stage3
     └── src
         ├── index.html
         ├── main.js
         ├── package.json
         ├── renderer.js
-        ├── renderer.png
+        ├── send_icon.png
         ├── server.py
         └── styles.css
 </pre>
